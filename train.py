@@ -19,6 +19,8 @@ parser = argparse.ArgumentParser(description='Train Arguments')
 parser.add_argument('--log', type=str, default=None, help='Write tensorboard style logs to this folder [default: None]')
 parser.add_argument('--saveas', type=str, default=None, help='savename for model (Training) [default: None]')
 parser.add_argument('--model', type=str, default=None, help='savename for model (Evaluating) [default: None]')
+parser.add_argument('--render', action='store_true',
+                    help='render the environment for display')
 
 # Training parameters
 parser.add_argument('--num_train_cycles', type=int, default=1000, help='Number of training cycles [default: 1]')
@@ -67,12 +69,12 @@ def run(actor, env, min_rate=None, writer=None, render=False):
         actor.eval()
         action = actor.predict(np.expand_dims(obs, axis=0), -1)  # Last intention is main task
         # Step the environment and push outputs to policy
-        obs, reward, done, _ = env.step(action[0])
+        obs, reward, done, _ = env.step(action[0].item())
         if writer:
             writer.add_scalar('test/reward', reward, TEST_STEP)
         step_toc = time.clock()
         step_time = step_toc - step_tic
-        if min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
+        if render and min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
             time.sleep(min_rate - step_time)
         num_steps += 1
         TEST_STEP += 1
@@ -116,7 +118,7 @@ if __name__ == '__main__':
         critic = torch.load(model_path + '_critic.pt')
         print('...done')
 
-        run(actor, env, min_rate=0.05, writer=writer, render=True)
+        run(actor, env, min_rate=0.05, writer=writer, render=args.render)
 
     else:  # TRAIN MODE
         # Non-linearity is an argument
@@ -139,13 +141,14 @@ if __name__ == '__main__':
                   num_learning_iterations=args.num_learning_iterations,
                   episode_batch_size=args.episode_batch_size,
                   lr=0.0002, writer=writer, loss=args.loss)
-            run(actor, env, min_rate=0.05, writer=writer)
+            run(actor, env, min_rate=0.05, writer=writer, render=args.render)
             # Remove early trajectories when buffer gets too large
             B = B[-args.buffer_size:]
 
         # Save the model to local directory
         if args.saveas is not None:
             save_path = str(root_dir / 'local' / 'models' / args.saveas)
+            Path(str(root_dir / 'local' / 'models/')).mkdir(parents=True, exist_ok=True)
             print('Saving models to %s' % save_path)
             torch.save(actor, save_path + '_actor.pt')
             torch.save(critic, save_path + '_critic.pt')

@@ -42,7 +42,7 @@ def act(actor, env, task, B, num_trajectories=10, task_period=30, writer=None):
             actor.eval()
             action, log_prob = actor.predict(np.expand_dims(obs, axis=0), task.current_task, log_prob=True)
             # Execute action and collect rewards for each task
-            obs, gym_reward, done, _ = env.step(action[0])
+            obs, gym_reward, done, _ = env.step(action[0].item())
             # # Modify the main task reward (the huge -100 and 100 values cause instability)
             # gym_reward /= 100.0
             # Reward is a vector of the reward for each task
@@ -243,9 +243,9 @@ def learn(actor, critic, task, B, num_learning_iterations=10, episode_batch_size
                 print('Loss not found')
                 return
             if writer:
-                writer.add_scalar('train/loss/actor', actor_loss.data[0], LEARN_STEP)
+                writer.add_scalar('train/loss/actor', actor_loss, LEARN_STEP)
                 if loss not in ['policy_gradient']:
-                    writer.add_scalar('train/loss/critic', critic_loss.data[0], LEARN_STEP)
+                    writer.add_scalar('train/loss/critic', critic_loss, LEARN_STEP)
             # compute gradients
             actor_loss.backward()
             if loss not in ['policy_gradient']:
