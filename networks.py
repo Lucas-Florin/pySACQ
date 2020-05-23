@@ -106,6 +106,7 @@ class SQXNet(torch.nn.Module):
         torch.nn.init.constant(self.layer2.bias.data, 0)
 
     def forward(self, x, intention):
+        x = x.cuda() if self.use_gpu else x
         # Feed the input through the base layers of the model
         if type(x) is not torch.Tensor:
             x = torch.tensor(x)
@@ -120,6 +121,7 @@ class SQXNet(torch.nn.Module):
             one_hot_mask = np.zeros((x.shape[0], len(self.intention_nets)))
             one_hot_mask[np.arange(x.shape[0]), intention.numpy()] = 1
             mask_tensor = torch.autograd.Variable(torch.FloatTensor(one_hot_mask).unsqueeze(1), requires_grad=False)
+            mask_tensor = mask_tensor.cuda() if self.use_gpu else mask_tensor
             # Feed forward through all the intention heads and concatenate on new dimension
             intention_out = torch.cat(list(head.forward(x).unsqueeze(2) for head in self.intention_nets), dim=2)
             # Multiply by the intention mask and sum in the final dimension to get the right output shape
@@ -127,7 +129,8 @@ class SQXNet(torch.nn.Module):
         return x
 
     def predict(self, x, intention):
-        y = self.forward(x, intention).cpu().data
+        y = self.forward(x, intention)
+        y = y.cpu()
         return y
 
 

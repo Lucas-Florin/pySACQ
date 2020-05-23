@@ -2,6 +2,8 @@ import argparse
 from pathlib import Path
 import sys
 import time
+import os
+
 import gym
 import torch
 import numpy as np
@@ -23,6 +25,10 @@ parser.add_argument('--render', action='store_true',
                     help='render the environment for display')
 
 # Training parameters
+parser.add_argument('--use-gpu', action='store_true',
+                    help='use GPU for training')
+parser.add_argument('--gpu-devices', default='0', type=str,
+                        help='gpu device ids for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--num_train_cycles', type=int, default=1000, help='Number of training cycles [default: 1]')
 parser.add_argument('--num_trajectories', type=int, default=5,
                     help='Number of trajectories collected per acting cycle [default: 5]')
@@ -93,7 +99,13 @@ if __name__ == '__main__':
         print('%s : %s' % (attr.upper(), value))
 
     # Make sure we can use gpu
-    use_gpu = torch.cuda.is_available()
+    use_gpu = args.use_gpu
+
+
+    if use_gpu:
+        os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_devices
+    use_gpu = torch.cuda.is_available() and args.use_gpu
     print('Gpu is enabled: %s' % use_gpu)
 
     # Replay buffer stores collected trajectories
@@ -131,6 +143,8 @@ if __name__ == '__main__':
         # New actor and critic policies
         actor = Actor(use_gpu=use_gpu, non_linear=non_linear, batch_norm=args.batch_norm)
         critic = Critic(use_gpu=use_gpu, non_linear=non_linear, batch_norm=args.batch_norm)
+        actor = torch.nn.DataParallel(actor).cuda() if use_gpu else actor
+        critic = torch.nn.DataParallel(critic).cuda() if use_gpu else critic
 
         for i in range(args.num_train_cycles):
             print('Training cycle %s of %s' % (i, args.num_train_cycles))
