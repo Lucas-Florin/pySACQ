@@ -18,10 +18,10 @@ class IntentionBase(torch.nn.Module):
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
-        torch.nn.init.xavier_uniform(self.layer1.weight.data)
-        torch.nn.init.constant(self.layer1.bias.data, 0)
-        torch.nn.init.xavier_uniform(self.final_layer.weight.data)
-        torch.nn.init.constant(self.final_layer.bias.data, 0)
+        torch.nn.init.xavier_uniform_(self.layer1.weight)
+        torch.nn.init.constant_(self.layer1.bias, 0)
+        torch.nn.init.xavier_uniform_(self.final_layer.weight)
+        torch.nn.init.constant_(self.final_layer.bias, 0)
 
     def forward(self, x):
         x = self.non_linear(self.layer1(x))
@@ -100,12 +100,14 @@ class SQXNet(torch.nn.Module):
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
-        torch.nn.init.xavier_uniform(self.layer1.weight.data)
-        torch.nn.init.constant(self.layer1.bias.data, 0)
-        torch.nn.init.xavier_uniform(self.layer2.weight.data)
-        torch.nn.init.constant(self.layer2.bias.data, 0)
+        torch.nn.init.xavier_uniform_(self.layer1.weight)
+        torch.nn.init.constant_(self.layer1.bias, 0)
+        torch.nn.init.xavier_uniform_(self.layer2.weight)
+        torch.nn.init.constant_(self.layer2.bias, 0)
 
     def forward(self, x, intention):
+        if type(x) is not torch.Tensor:
+            x = torch.tensor(x)
         x = x.cuda() if self.use_gpu else x
         # Feed the input through the base layers of the model
         if type(x) is not torch.Tensor:

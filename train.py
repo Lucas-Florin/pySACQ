@@ -27,7 +27,7 @@ parser.add_argument('--render', action='store_true',
 # Training parameters
 parser.add_argument('--use-gpu', action='store_true',
                     help='use GPU for training')
-parser.add_argument('--gpu-devices', default='0', type=str,
+parser.add_argument('--gpu-device', default='0', type=str,
                         help='gpu device ids for CUDA_VISIBLE_DEVICES')
 parser.add_argument('--num_train_cycles', type=int, default=1000, help='Number of training cycles [default: 1]')
 parser.add_argument('--num_trajectories', type=int, default=5,
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     if use_gpu:
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_devices
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_device
     use_gpu = torch.cuda.is_available() and args.use_gpu
     print('Gpu is enabled: %s' % use_gpu)
 
@@ -133,6 +133,7 @@ if __name__ == '__main__':
         run(actor, env, min_rate=0.05, writer=writer, render=args.render)
 
     else:  # TRAIN MODE
+        print('Train mode. ')
         # Non-linearity is an argument
         non_linear = None
         if args.non_linear == 'relu':
@@ -143,9 +144,10 @@ if __name__ == '__main__':
         # New actor and critic policies
         actor = Actor(use_gpu=use_gpu, non_linear=non_linear, batch_norm=args.batch_norm)
         critic = Critic(use_gpu=use_gpu, non_linear=non_linear, batch_norm=args.batch_norm)
-        actor = torch.nn.DataParallel(actor).cuda() if use_gpu else actor
-        critic = torch.nn.DataParallel(critic).cuda() if use_gpu else critic
+        actor = actor.cuda() if use_gpu else actor
+        critic = actor.cuda() if use_gpu else critic
 
+        print('Start training. ')
         for i in range(args.num_train_cycles):
             print('Training cycle %s of %s' % (i, args.num_train_cycles))
             act(actor, env, task, B,
