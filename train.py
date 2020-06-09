@@ -43,7 +43,6 @@ parser.add_argument('--buffer_size', type=int, default=200,
 parser.add_argument('--non_linear', type=str, default='relu', help='Non-linearity in the nets [default: ReLU]')
 parser.add_argument('--batch_norm', dest='batch_norm', default=False, action='store_true',
                     help='Batch norm applied to input layers [default: False]')
-parser.add_argument('--loss', type=str, default='retrace', help='Type of loss used when training [default: retrace]')
 
 # Global step counters
 TEST_STEP = 0
@@ -156,7 +155,7 @@ if __name__ == '__main__':
             learn(actor, critic, task, B,
                   num_learning_iterations=args.num_learning_iterations,
                   episode_batch_size=args.episode_batch_size,
-                  lr=0.0002, writer=writer, loss=args.loss)
+                  lr=0.0002, writer=writer)
             run(actor, env, min_rate=0.05, writer=writer, render=args.render)
             # Remove early trajectories when buffer gets too large
             B = B[-args.buffer_size:]
