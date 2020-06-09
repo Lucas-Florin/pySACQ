@@ -1,15 +1,20 @@
 from collections import namedtuple
 import random
+import time
+
+
 import torch
+import torch.nn as nn
 import numpy as np
+
+from retrace_loss import RetraceLoss
 
 # Named tuple for a single step within a trajectory
 Step = namedtuple('Step', ['state', 'action', 'log_prob', 'reward'])
+Trajectory = namedtuple('Trajectory', ['states', 'actions', 'log_probs', 'rewards'])
 
-# Global step counters
-ACT_STEP = 0
 LEARN_STEP = 0
-
+ACT_STEP = 0
 
 def act(actor, env, task, B, num_trajectories=10, task_period=30, writer=None):
     """
@@ -28,7 +33,7 @@ def act(actor, env, task, B, num_trajectories=10, task_period=30, writer=None):
     for trajectory_idx in range(num_trajectories):
         #print('Acting: trajectory %s of %s' % (trajectory_idx + 1, num_trajectories))
         # Reset environment and trajectory specific parameters
-        trajectory = []  # collection of state, action, task pairs
+        observations, actions, log_probs, rewards = list(), list(), list(), list()
         task.reset()  # h in paper
         obs = env.reset()
         done = False
@@ -51,11 +56,17 @@ def act(actor, env, task, B, num_trajectories=10, task_period=30, writer=None):
                 for i, r in enumerate(reward):
                     writer.add_scalar('train/reward/%s' % i, r, ACT_STEP)
             # group information into a step and add to current trajectory
-            trajectory.append(Step(obs, action[0], log_prob[0], reward))
-            num_steps += 1  # increment step counter
-            ACT_STEP += 1
+            observations.append(obs)
+            actions.append(action.item())
+            log_probs.append(log_prob.item())
+            rewards.append(reward)
+            num_steps += 1
         # Add trajectory to replay buffer
-        B.append(trajectory)
+        observations = np.array(observations)
+        actions = np.array(actions)
+        log_probs = np.array(log_probs)
+        rewards = np.array(rewards)
+        B.append(Trajectory(observations, actions, log_probs, rewards))
 
 
 def _loss_retrace(trajectory, task, actor, critic, gamma=0.95):
@@ -147,7 +158,9 @@ def learn(actor, critic, task, B, num_learning_iterations=10, episode_batch_size
             # Sample a random trajectory from the replay buffer
             trajectory = random.choice(B)
             # Compute losses for critic and actor
+            start_time = time.time()
             actor_loss, critic_loss = _loss_retrace(trajectory, task, actor, critic)
+            print('Loss time: ' + str(time.time() - start_time))
             if writer:
                 writer.add_scalar('train/loss/actor', actor_loss, LEARN_STEP)
                 writer.add_scalar('train/loss/critic', critic_loss, LEARN_STEP)
