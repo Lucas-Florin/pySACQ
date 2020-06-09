@@ -1,36 +1,41 @@
 import torch
+import torch.nn as nn
 import numpy as np
 
 
-class IntentionBase(torch.nn.Module):
+class TaskHeadBase(torch.nn.Module):
     """Generic class for a single intention head (used within actor/critic networks)"""
 
-    def __init__(self, input_size, hidden_size, output_size, non_linear, final_non_linear, use_gpu=True):
-        super(IntentionBase, self).__init__()
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 output_size,
+                 non_linear,
+                 use_gpu=True):
+        super(TaskHeadBase, self).__init__()
         self.non_linear = non_linear
-        self.final_non_linear = final_non_linear
         self.use_gpu = use_gpu
 
         # Build the network
-        self.layer1 = torch.nn.Linear(input_size, hidden_size)
-        self.final_layer = torch.nn.Linear(hidden_size, output_size)
+        self.layer1 = nn.Linear(input_size, hidden_size)
+        self.final_layer = nn.Linear(hidden_size, output_size)
         self.init_weights()
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
-        torch.nn.init.xavier_uniform_(self.layer1.weight)
-        torch.nn.init.constant_(self.layer1.bias, 0)
-        torch.nn.init.xavier_uniform_(self.final_layer.weight)
-        torch.nn.init.constant_(self.final_layer.bias, 0)
+        nn.init.xavier_uniform_(self.layer1.weight)
+        nn.init.constant_(self.layer1.bias, 0)
+        nn.init.xavier_uniform_(self.final_layer.weight)
+        nn.init.constant_(self.final_layer.bias, 0)
 
     def forward(self, x):
         x = self.non_linear(self.layer1(x))
-        x = self.final_non_linear(self.final_layer(x))
+        x = self.final_layer(x)
         return x
 
 
-class IntentionCritic(IntentionBase):
-    """Class for a single Intention head within the Q-function (or critic) network"""
+class TaskHeadCritic(TaskHeadBase):
+    """Class for a single Task head within the Q-function (or critic) network"""
 
     def __init__(self,
                  input_size,
@@ -38,23 +43,21 @@ class IntentionCritic(IntentionBase):
                  output_size,
                  non_linear=torch.nn.ELU(),
                  use_gpu=True):
-        final_non_linear = non_linear
-        super(IntentionCritic, self).__init__(input_size, hidden_size, output_size, non_linear, final_non_linear,
-                                              use_gpu)
-
-
-class IntentionActor(IntentionBase):
-    """Class for a single Intention head within the policy (or actor) network"""
-
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 output_size,
-                 non_linear=torch.nn.ELU(),
-                 final_non_linear=torch.nn.Softmax(dim=1),
-                 use_gpu=True):
-        super(IntentionActor, self).__init__(input_size, hidden_size, output_size, non_linear, final_non_linear,
+        super(TaskHeadCritic, self).__init__(input_size, hidden_size, output_size, non_linear,
                                              use_gpu)
+
+
+class TaskHeadActor(TaskHeadBase):
+    """Class for a single Task head within the policy (or actor) network"""
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 output_size,
+                 non_linear=nn.ELU(),
+                 use_gpu=True):
+        super(TaskHeadActor, self).__init__(input_size, hidden_size, output_size, non_linear,
+                                            use_gpu)
 
 
 class SQXNet(torch.nn.Module):
@@ -68,7 +71,7 @@ class SQXNet(torch.nn.Module):
                  head_hidden_size,
                  head_output_size,
                  non_linear,
-                 net_type,
+                 intention_net_type,
                  batch_norm=False,
                  use_gpu=True):
         super(SQXNet, self).__init__()
@@ -77,19 +80,14 @@ class SQXNet(torch.nn.Module):
         self.use_gpu = use_gpu
 
         # Build the base of the network
-        self.layer1 = torch.nn.Linear(state_dim, base_hidden_size)
-        self.layer2 = torch.nn.Linear(base_hidden_size, head_input_size)
+        self.layer1 = nn.Linear(state_dim, base_hidden_size)
+        self.layer2 = nn.Linear(base_hidden_size, head_input_size)
         if self.batch_norm:
-            self.bn1 = torch.nn.BatchNorm1d(base_hidden_size)
+            self.bn1 = nn.BatchNorm1d(base_hidden_size)
         self.init_weights()
 
         # Create the many intention nets heads
-        if net_type == 'actor':
-            intention_net_type = IntentionActor
-        elif net_type == 'critic':
-            intention_net_type = IntentionCritic
-        else:
-            raise Exception('Invalid net type for SQXNet')
+
         self.intention_nets = []
         for _ in range(num_intentions):
             self.intention_nets.append(intention_net_type(input_size=head_input_size,
@@ -100,40 +98,21 @@ class SQXNet(torch.nn.Module):
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
-        torch.nn.init.xavier_uniform_(self.layer1.weight)
-        torch.nn.init.constant_(self.layer1.bias, 0)
-        torch.nn.init.xavier_uniform_(self.layer2.weight)
-        torch.nn.init.constant_(self.layer2.bias, 0)
+        nn.init.xavier_uniform_(self.layer1.weight)
+        nn.init.constant_(self.layer1.bias, 0)
+        nn.init.xavier_uniform_(self.layer2.weight)
+        nn.init.constant_(self.layer2.bias, 0)
 
-    def forward(self, x, intention):
-        if type(x) is not torch.Tensor:
-            x = torch.tensor(x)
-        x = x.cuda() if self.use_gpu else x
+    def forward(self, x, task=None):
         # Feed the input through the base layers of the model
-        if type(x) is not torch.Tensor:
-            x = torch.tensor(x)
         x = self.non_linear(self.layer1(x))
         if self.batch_norm:
             x = self.bn1(x)
         x = self.non_linear(self.layer2(x))
-        if isinstance(intention, int):  # single intention head
-            x = self.intention_nets[intention].forward(x)
+        if task is not None:  # single intention head
+            return self.intention_nets[task](x)
         else:
-            # Create intention mask
-            one_hot_mask = np.zeros((x.shape[0], len(self.intention_nets)))
-            one_hot_mask[np.arange(x.shape[0]), intention.numpy()] = 1
-            mask_tensor = torch.autograd.Variable(torch.FloatTensor(one_hot_mask).unsqueeze(1), requires_grad=False)
-            mask_tensor = mask_tensor.cuda() if self.use_gpu else mask_tensor
-            # Feed forward through all the intention heads and concatenate on new dimension
-            intention_out = torch.cat(list(head.forward(x).unsqueeze(2) for head in self.intention_nets), dim=2)
-            # Multiply by the intention mask and sum in the final dimension to get the right output shape
-            x = (intention_out * mask_tensor).sum(dim=2)
-        return x
-
-    def predict(self, x, intention):
-        y = self.forward(x, intention)
-        y = y.cpu()
-        return y
+            return torch.stack([net(x) for net in self.intention_nets])
 
 
 class Actor(SQXNet):
@@ -147,7 +126,7 @@ class Actor(SQXNet):
                  head_hidden_size=8,
                  head_output_size=4,
                  non_linear=torch.nn.ELU(),
-                 net_type='actor',
+                 net_type=TaskHeadActor,
                  batch_norm=False,
                  use_gpu=True):
         super(Actor, self).__init__(state_dim,
@@ -160,9 +139,11 @@ class Actor(SQXNet):
                                     net_type,
                                     batch_norm,
                                     use_gpu)
+        self.logits = nn.Softmax(dim=-1)
 
-    def forward(self, x, intention, log_prob=False):
-        x = super().forward(x, intention)
+    def predict(self, x, task, log_prob=False):
+        x = self(x, task)
+        x = self.logits(x)
         # Intention head determines parameters of Categorical distribution
         dist = torch.distributions.Categorical(x)
         action = dist.sample()
@@ -170,15 +151,6 @@ class Actor(SQXNet):
             log_prob = dist.log_prob(action)
             return action, log_prob
         return action
-
-    def predict(self, x, intention, log_prob=False):
-        if log_prob:
-            action, log_prob = self.forward(x, intention, log_prob=True)
-            return action.cpu().data, log_prob.cpu().data
-        else:
-            action = self.forward(x, intention).cpu().data
-            return action
-        return None
 
 
 class Critic(SQXNet):
@@ -192,7 +164,7 @@ class Critic(SQXNet):
                  head_hidden_size=32,
                  head_output_size=1,
                  non_linear=torch.nn.ELU(),
-                 net_type='critic',
+                 net_type=TaskHeadCritic,
                  batch_norm=False,
                  use_gpu=True):
         super(Critic, self).__init__(state_dim,
@@ -215,14 +187,13 @@ if __name__ == '__main__':
 
     # Carry out a step on the environment to test out forward functions
     import gym
-    import random
 
     env = gym.make('LunarLander-v2')
     obs = env.reset()
-    task_idx = random.randint(0, 6)
+    task_idx = np.random.randint(6)
 
     # Get the action from current actor policy
-    action = actor.predict(obs, task_idx)
-    _, _, _, _ = env.step(action)
+    action = actor.predict(torch.tensor([obs]), task_idx)
+    _, _, _, _ = env.step(action.item())
 
     print('Got to end sucessfully! (Though this only means there are no major bugs..)')
