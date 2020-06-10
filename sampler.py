@@ -34,8 +34,9 @@ class Sampler:
     def sample(self):
         for trajectory_idx in range(self.num_trajectories):
             # print('Acting: trajectory %s of %s' % (trajectory_idx + 1, num_trajectories))
-            # Reset environment and trajectory specific parameters
+            self.actor.eval()
             observations, actions, log_probs, rewards = list(), list(), list(), list()
+            # Reset environment and trajectory specific parameters
             self.task_scheduler.reset()  # h in paper
             obs = self.env.reset()
             done = False
@@ -46,7 +47,6 @@ class Sampler:
                 if num_steps % self.task_period == 0:
                     self.task_scheduler.sample()
                 # Get the action from current actor policy
-                self.actor.eval()
                 action, log_prob = self.actor.predict(np.expand_dims(obs, axis=0), self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
                 obs, gym_reward, done, _ = self.env.step(action[0].item())

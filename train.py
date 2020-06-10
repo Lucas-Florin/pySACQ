@@ -14,7 +14,8 @@ root_dir = Path.cwd()
 sys.path.append(str(root_dir))
 from networks import Actor, Critic
 from tasks import TaskScheduler
-from model import act, learn
+from learner import Learner
+from sampler import Sampler
 
 # Log and model saving parameters
 parser = argparse.ArgumentParser(description='Train Arguments')
@@ -74,7 +75,7 @@ def run(actor, env, min_rate=None, writer=None, render=False):
         actor.eval()
         action = actor.predict(np.expand_dims(obs, axis=0), -1)  # Last intention is main task
         # Step the environment and push outputs to policy
-        obs, reward, done, _ = env.step(action[0].item())
+        obs, reward, done, _ = env.step(action.item())
         if writer:
             writer.add_scalar('test/reward', reward, TEST_STEP)
         step_toc = time.clock()
@@ -146,18 +147,24 @@ if __name__ == '__main__':
         actor = actor.cuda() if use_gpu else actor
         critic = actor.cuda() if use_gpu else critic
 
+        learner = Learner(actor, critic, task, B,
+                          num_learning_iterations=args.num_learning_iterations,
+                          episode_batch_size=args.episode_batch_size,
+                          writer=writer)
+
+        sampler = Sampler(actor, env, task, B,
+                          num_trajectories=args.num_trajectories,
+                          task_period=30,
+                          writer=writer)
+
         print('Start training. ')
         for i in range(args.num_train_cycles):
             print('Training cycle %s of %s' % (i, args.num_train_cycles))
-            act(actor, env, task, B,
-                num_trajectories=args.num_trajectories,
-                task_period=30, writer=writer)
-            learn(actor, critic, task, B,
-                  num_learning_iterations=args.num_learning_iterations,
-                  episode_batch_size=args.episode_batch_size,
-                  lr=0.0002, writer=writer)
+            sampler.sample()
+            learner.learn()
             run(actor, env, min_rate=0.05, writer=writer, render=args.render)
             # Remove early trajectories when buffer gets too large
+
             B = B[-args.buffer_size:]
 
         # Save the model to local directory

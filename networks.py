@@ -141,7 +141,7 @@ class Actor(SQXNet):
                                     use_gpu)
         self.logits = nn.Softmax(dim=-1)
 
-    def predict(self, x, task, log_prob=False):
+    def predict(self, x, task, log_prob=True):
         x = self(x, task)
         x = self.logits(x)
         # Intention head determines parameters of Categorical distribution
@@ -155,6 +155,7 @@ class Actor(SQXNet):
 
 class Critic(SQXNet):
     """Class for Q-function (or critic) network"""
+    # TODO: One-hot encoding of actions input.
 
     def __init__(self,
                  num_intentions=6,
