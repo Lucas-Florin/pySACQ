@@ -47,9 +47,10 @@ class Sampler:
                 if num_steps % self.task_period == 0:
                     self.task_scheduler.sample()
                 # Get the action from current actor policy
-                action, log_prob = self.actor.predict(np.expand_dims(obs, axis=0), self.task_scheduler.current_task)
+                obs = torch.tensor(obs, dtype=torch.float).unsqueeze(dim=0)
+                action, log_prob = self.actor.predict(obs, self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
-                obs, gym_reward, done, _ = self.env.step(action[0].item())
+                obs, gym_reward, done, _ = self.env.step(action.item())
                 # # Modify the main task reward (the huge -100 and 100 values cause instability)
                 # gym_reward /= 100.0
                 # Reward is a vector of the reward for each task
@@ -68,6 +69,10 @@ class Sampler:
             actions = torch.tensor(actions, dtype=torch.float)
             log_probs = torch.tensor(log_probs, dtype=torch.float)
             rewards = torch.tensor(rewards, dtype=torch.float)
+            for t in (observations, actions, log_probs, rewards):
+                if t.dim() == 1:
+                    t.unsqueeze_(1)
+                assert t.dim() == 2
             trajectory = Trajectory(observations, actions, log_probs, rewards)
             self.replay_buffer.append(trajectory)
 

@@ -105,14 +105,17 @@ class SQXNet(torch.nn.Module):
 
     def forward(self, x, task=None):
         # Feed the input through the base layers of the model
-        x = self.non_linear(self.layer1(x))
+        x = self.layer1(x)
+        x = self.non_linear(x)
         if self.batch_norm:
             x = self.bn1(x)
         x = self.non_linear(self.layer2(x))
         if task is not None:  # single intention head
-            return self.intention_nets[task](x)
+            return self.intention_nets[task](x).unsqueeze(0)
         else:
-            return torch.stack([net(x) for net in self.intention_nets])
+            x = [net(x) for net in self.intention_nets]
+            x = torch.stack(x, dim=1)
+            return x
 
 
 class Actor(SQXNet):
@@ -141,7 +144,7 @@ class Actor(SQXNet):
                                     use_gpu)
         self.logits = nn.Softmax(dim=-1)
 
-    def predict(self, x, task, log_prob=True):
+    def predict(self, x, task=None, log_prob=True):
         x = self(x, task)
         x = self.logits(x)
         # Intention head determines parameters of Categorical distribution

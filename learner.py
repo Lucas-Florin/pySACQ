@@ -64,9 +64,10 @@ class Learner:
                 # Train actor.
                 self.actor.train()
                 self.actor_opt.zero_grad()
-                task_actions, task_log_probs = self.actor(states)
+                task_actions, task_log_probs = self.actor.predict(states)
                 # TODO: Implement as separate function. Here or in critic class.
                 # TODO: Allow for multidimensional actions.
+                # TODO: Implement computing tasks separately.
                 critic_input = torch.cat([task_actions.float(), states], dim=1)
                 task_state_action_values = self.critic(critic_input)
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
@@ -74,7 +75,7 @@ class Learner:
                 self.actor_opt.step()
 
                 # Train critic.
-                self.critc.train()
+                self.critic.train()
                 self.critic_opt.zero_grad()
 
                 critic_input = torch.cat([actions, states], dim=1)
