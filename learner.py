@@ -1,11 +1,5 @@
-from collections import namedtuple
 import random
-import time
-
-
 import torch
-import torch.nn as nn
-import numpy as np
 
 from losses.retrace_loss import RetraceLoss
 from losses.actor_loss import ActorLoss
@@ -31,7 +25,7 @@ class Learner:
         self.episode_batch_size = episode_batch_size
         self.lr = lr
         self.writer = writer
-        self.learn_step = 0
+        self.step_counter = 0
 
         # TODO: L2 regularization?
         self.actor_opt = torch.optim.Adam(actor.parameters(), lr)
@@ -96,9 +90,9 @@ class Learner:
 
                 # Write to log.
                 if self.writer:
-                    self.writer.add_scalar('train/loss/actor', actor_loss, self.learn_step)
-                    self.writer.add_scalar('train/loss/critic', critic_loss, self.learn_step)
-                self.learn_step += 1
+                    self.writer.add_scalar('train/loss/actor', actor_loss, self.step_counter)
+                    self.writer.add_scalar('train/loss/critic', critic_loss, self.step_counter)
+                self.step_counter += 1
         self.update_targets()
 
 
