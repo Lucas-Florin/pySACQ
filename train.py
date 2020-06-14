@@ -108,7 +108,7 @@ if __name__ == '__main__':
         os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu_device
     use_gpu = torch.cuda.is_available() and args.use_gpu
-    print('Gpu is enabled: %s' % use_gpu)
+    print('Use GPU: %s' % use_gpu)
 
     # Replay buffer stores collected trajectories
     B = []
