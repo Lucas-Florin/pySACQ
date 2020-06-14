@@ -1,6 +1,12 @@
+# Import Python packages
 import random
-import torch
+import copy
 
+# Import libraries
+import torch
+import torch.nn as nn
+
+# Import losses
 from losses.retrace_loss import RetraceLoss
 from losses.actor_loss import ActorLoss
 
@@ -8,10 +14,10 @@ from losses.actor_loss import ActorLoss
 class Learner:
 
     def __init__(self,
-                 actor,
-                 critic,
+                 actor: nn.Module,
+                 critic: nn.Module,
                  task_scheduler,
-                 replay_buffer,
+                 replay_buffer: list,
                  num_learning_iterations=10,
                  episode_batch_size=10,
                  lr=0.0002,
@@ -36,12 +42,14 @@ class Learner:
         self.critic_criterion = RetraceLoss()
 
         # TODO: Implement copying models and set to eval.
-        self.target_actor = actor
-        self.target_critic = critic
+        self.target_actor = copy.deepcopy(self.actor)
+        self.target_critic = copy.deepcopy(self.critic)
+        self.target_actor.eval()
+        self.target_critic.eval()
 
     def update_targets(self):
-        # TODO: Implement
-        pass
+        self.target_actor.load_state_dict(self.actor.state_dict())
+        self.target_critic.load_state_dict(self.critic.state_dict())
 
     def learn(self):
         # TODO: Implement separate target actor and critic nets.
