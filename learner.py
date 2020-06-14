@@ -66,9 +66,7 @@ class Learner:
                 self.critic.eval()
                 self.actor_opt.zero_grad()
                 task_actions, task_log_probs = self.actor.predict(states)
-                # TODO: Implement as separate function. Here or in critic class.
                 # TODO: Allow for multidimensional actions.
-                # TODO: Implement computing tasks separately.
                 critic_input = torch.cat([task_actions.float().unsqueeze(2),
                                           states.unsqueeze(1).expand(-1, self.actor.num_intentions, -1)], dim=2)
                 task_state_action_values = self.critic(critic_input)
