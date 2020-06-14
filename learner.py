@@ -33,7 +33,6 @@ class Learner:
         self.writer = writer
         self.step_counter = 0
 
-        # TODO: L2 regularization?
         self.actor_opt = torch.optim.Adam(actor.parameters(), lr)
         self.critic_opt = torch.optim.Adam(critic.parameters(), lr)
 
@@ -41,7 +40,6 @@ class Learner:
         self.actor_criterion = ActorLoss()
         self.critic_criterion = RetraceLoss()
 
-        # TODO: Implement copying models and set to eval.
         self.target_actor = copy.deepcopy(self.actor)
         self.target_critic = copy.deepcopy(self.critic)
         self.target_actor.eval()
@@ -52,9 +50,6 @@ class Learner:
         self.target_critic.load_state_dict(self.critic.state_dict())
 
     def learn(self):
-        # TODO: Implement separate target actor and critic nets.
-        self.actor.train()
-        self.critic.train()
         for learn_idx in range(self.num_learning_iterations):
             # print('Learning: trajectory %s of %s' % (learn_idx + 1, num_learning_iterations))
             # Optimizers for critic and actor
