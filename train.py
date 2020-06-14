@@ -73,7 +73,7 @@ def run(actor, env, min_rate=None, writer=None, render=False):
             env.render()
         # Use the previous observation to get an action from policy
         actor.eval()
-        action = actor.predict(np.expand_dims(obs, axis=0), -1)  # Last intention is main task
+        action, _ = actor.predict(torch.tensor(obs, dtype=torch.float), -1)  # Last intention is main task
         # Step the environment and push outputs to policy
         obs, reward, done, _ = env.step(action.item())
         if writer:

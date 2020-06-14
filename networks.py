@@ -78,6 +78,8 @@ class SQXNet(torch.nn.Module):
         self.non_linear = non_linear
         self.batch_norm = batch_norm
         self.use_gpu = use_gpu
+        self.num_intentions = num_intentions
+        self.state_dim = state_dim
 
         # Build the base of the network
         self.layer1 = nn.Linear(state_dim, base_hidden_size)
@@ -105,17 +107,25 @@ class SQXNet(torch.nn.Module):
 
     def forward(self, x, task=None):
         # Feed the input through the base layers of the model
+        d = x.dim()
+        assert d <= 2
+        while x.dim() < 2:
+            x = x.unsqueeze(0)
         x = self.layer1(x)
         x = self.non_linear(x)
         if self.batch_norm:
             x = self.bn1(x)
         x = self.non_linear(self.layer2(x))
         if task is not None:  # single intention head
-            return self.intention_nets[task](x).unsqueeze(0)
+            x = self.intention_nets[task](x)
+            assert x.dim() == 2
+            return x
         else:
             x = [net(x) for net in self.intention_nets]
             x = torch.stack(x, dim=1)
             return x
+
+
 
 
 class Actor(SQXNet):
@@ -181,6 +191,20 @@ class Critic(SQXNet):
                                      net_type,
                                      batch_norm,
                                      use_gpu)
+
+    def forward(self, x, task=None):
+        if x.dim() <= 2:
+            return super().forward(x, task).squeeze()
+        else:
+            # TODO: Document.
+            assert x.dim() == 3
+            # TODO: Change intention dimension?
+            assert x.shape[1] == self.num_intentions
+            x_list = list()
+            for i in range(self.num_intentions):
+                x_list.append(super().forward(x[:, i, :].squeeze(), i))
+            x = torch.cat(x_list, dim=1)
+            return x
 
 
 if __name__ == '__main__':
