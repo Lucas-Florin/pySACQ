@@ -20,6 +20,7 @@ class Sampler:
                  replay_buffer,
                  num_trajectories=10,
                  task_period=10,
+                 use_gpu=False,
                  writer=None):
 
         self.actor = actor
@@ -30,6 +31,7 @@ class Sampler:
         self.task_period = task_period
         self.writer = writer
         self.step_counter = 0
+        self.use_gpu = use_gpu
 
     def sample(self):
         for trajectory_idx in range(self.num_trajectories):
@@ -48,6 +50,7 @@ class Sampler:
                     self.task_scheduler.sample()
                 # Get the action from current actor policy
                 obs = torch.tensor(obs, dtype=torch.float).unsqueeze(dim=0)
+                obs = obs.cuda() if self.use_gpu else obs
                 action, log_prob = self.actor.predict(obs, self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
                 obs, gym_reward, done, _ = self.env.step(action.item())

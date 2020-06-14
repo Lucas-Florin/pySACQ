@@ -21,6 +21,7 @@ class Learner:
                  num_learning_iterations=10,
                  episode_batch_size=10,
                  lr=0.0002,
+                 use_gpu=False,
                  writer=None):
 
         self.actor = actor
@@ -31,6 +32,8 @@ class Learner:
         self.episode_batch_size = episode_batch_size
         self.lr = lr
         self.writer = writer
+
+        self.use_gpu = use_gpu
         self.step_counter = 0
 
         self.actor_opt = torch.optim.Adam(actor.parameters(), lr)
@@ -58,10 +61,10 @@ class Learner:
             for batch_idx in range(self.episode_batch_size):
                 # Sample a random trajectory from the replay buffer
                 trajectory = random.choice(self.replay_buffer)
-                states = trajectory.states
-                rewards = trajectory.rewards
-                actions = trajectory.actions
-                log_probs = trajectory.log_probs
+                states = trajectory.states.cuda() if self.use_gpu else trajectory.states
+                rewards = trajectory.rewards.cuda() if self.use_gpu else trajectory.rewards
+                actions = trajectory.actions.cuda() if self.use_gpu else trajectory.actions
+                log_probs = trajectory.log_probs.cuda() if self.use_gpu else trajectory.log_probs
                 num_steps = states.shape[0]
 
                 # Train actor.

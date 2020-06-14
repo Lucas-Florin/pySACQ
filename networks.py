@@ -97,6 +97,9 @@ class SQXNet(torch.nn.Module):
                                                           output_size=head_output_size,
                                                           use_gpu=use_gpu,
                                                           non_linear=non_linear))
+        if self.use_gpu:
+            for net in self.intention_nets:
+                net.cuda()
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
@@ -107,6 +110,7 @@ class SQXNet(torch.nn.Module):
 
     def forward(self, x, task=None):
         # Feed the input through the base layers of the model
+        #print(x.shape)
         d = x.dim()
         assert d <= 2
         while x.dim() < 2:

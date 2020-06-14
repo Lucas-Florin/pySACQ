@@ -49,7 +49,7 @@ parser.add_argument('--batch_norm', dest='batch_norm', default=False, action='st
 TEST_STEP = 0
 
 
-def run(actor, env, min_rate=None, writer=None, render=False):
+def run(actor, env, min_rate=None, writer=None, render=False, use_gpu=False):
     """
     Runs the actor policy on the environment, rendering it. This does not store anything
     and is only used for visualization.
@@ -73,7 +73,9 @@ def run(actor, env, min_rate=None, writer=None, render=False):
             env.render()
         # Use the previous observation to get an action from policy
         actor.eval()
-        action, _ = actor.predict(torch.tensor(obs, dtype=torch.float), -1)  # Last intention is main task
+        obs = torch.tensor(obs, dtype=torch.float)
+        obs = obs.cuda() if use_gpu else obs
+        action, _ = actor.predict(obs, -1)  # Last intention is main task
         # Step the environment and push outputs to policy
         obs, reward, done, _ = env.step(action.item())
         if writer:
@@ -130,7 +132,7 @@ if __name__ == '__main__':
         critic = torch.load(model_path + '_critic.pt')
         print('...done')
 
-        run(actor, env, min_rate=0.05, writer=writer, render=args.render)
+        run(actor, env, min_rate=0.05, writer=writer, render=args.render, use_gpu=use_gpu)
 
     else:  # TRAIN MODE
         print('Train mode. ')
@@ -145,16 +147,18 @@ if __name__ == '__main__':
         actor = Actor(use_gpu=use_gpu, non_linear=non_linear, batch_norm=args.batch_norm)
         critic = Critic(use_gpu=use_gpu, non_linear=non_linear, batch_norm=args.batch_norm)
         actor = actor.cuda() if use_gpu else actor
-        critic = actor.cuda() if use_gpu else critic
+        critic = critic.cuda() if use_gpu else critic
 
         learner = Learner(actor, critic, task, B,
                           num_learning_iterations=args.num_learning_iterations,
                           episode_batch_size=args.episode_batch_size,
+                          use_gpu=use_gpu,
                           writer=writer)
 
         sampler = Sampler(actor, env, task, B,
                           num_trajectories=args.num_trajectories,
                           task_period=30,
+                          use_gpu=use_gpu,
                           writer=writer)
 
         print('Start training. ')
@@ -162,7 +166,7 @@ if __name__ == '__main__':
             print('Training cycle %s of %s' % (i, args.num_train_cycles))
             sampler.sample()
             learner.learn()
-            run(actor, env, min_rate=0.05, writer=writer, render=args.render)
+            run(actor, env, min_rate=0.05, writer=writer, render=args.render, use_gpu=use_gpu)
             # Remove early trajectories when buffer gets too large
 
             B = B[-args.buffer_size:]
