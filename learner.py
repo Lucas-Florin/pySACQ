@@ -85,9 +85,12 @@ class Learner:
                 self.actor.eval()
                 self.critic_opt.zero_grad()
 
+                # TODO: Use batch to sample data without temporal correlation?
                 critic_input = torch.cat([actions, states], dim=1)
                 state_action_values = self.critic(critic_input)
                 target_state_action_values = self.target_critic(critic_input).detach()
+                # TODO: Use target actor for task_log_probs.
+                # TODO: Compute target_state_action_values based on trajectory states and current target actor actions.
                 critic_loss = self.critic_criterion(state_action_values,
                                                     target_state_action_values,
                                                     rewards,
