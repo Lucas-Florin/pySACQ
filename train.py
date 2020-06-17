@@ -95,10 +95,15 @@ def run(actor, env, min_rate=None, writer=None, render=False, use_gpu=False):
 if __name__ == '__main__':
 
     # Parse and print out parameters
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S_")
+    print('Timestamp: {}'.format(timestamp))
     args = parser.parse_args()
+    args.log = timestamp + args.log if args.log is not None else None
+    args.saveas = timestamp + args.saveas if args.saveas is not None else None
     print('Running Trainer. Parameters:')
     for attr, value in args.__dict__.items():
         print('%s : %s' % (attr.upper(), value))
+
 
     # Make sure we can use gpu
     use_gpu = args.use_gpu
