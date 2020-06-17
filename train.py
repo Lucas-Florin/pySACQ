@@ -75,7 +75,7 @@ def run(actor, env, min_rate=None, writer=None, render=False, use_gpu=False):
         actor.eval()
         obs = torch.tensor(obs, dtype=torch.float)
         obs = obs.cuda() if use_gpu else obs
-        action, _ = actor.predict(obs, -1)  # Last intention is main task
+        action, _ = actor.predict(obs, task=-1)  # Last intention is main task
         # Step the environment and push outputs to policy
         obs, reward, done, _ = env.step(action.item())
         if writer:

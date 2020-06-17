@@ -159,12 +159,13 @@ class Actor(SQXNet):
                                     use_gpu)
         self.logits = nn.Softmax(dim=-1)
 
-    def predict(self, x, task=None, log_prob=True):
+    def predict(self, x, task=None, action=None, log_prob=True):
         x = self(x, task)
         x = self.logits(x)
         # Intention head determines parameters of Categorical distribution
         dist = torch.distributions.Categorical(x)
-        action = dist.sample()
+        if action is None:
+            action = dist.sample()
         if log_prob:
             log_prob = dist.log_prob(action)
             return action, log_prob

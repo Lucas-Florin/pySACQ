@@ -32,6 +32,7 @@ class Learner:
         self.episode_batch_size = episode_batch_size
         self.lr = lr
         self.writer = writer
+        self.num_intentions = self.actor.num_intentions
 
         self.use_gpu = use_gpu
         self.step_counter = 0
@@ -50,7 +51,19 @@ class Learner:
 
     def update_targets(self):
         self.target_actor.load_state_dict(self.actor.state_dict())
+        self.target_actor.eval()
         self.target_critic.load_state_dict(self.critic.state_dict())
+        self.target_critic.eval()
+
+    def get_critic_input(self, actions, states) -> torch.Tensor:
+        assert actions.dim() == 2
+        assert states.dim() == 2
+        if actions.shape[1] == 1:
+            critic_input = torch.cat([actions, states], dim=1)
+        else:
+            critic_input = torch.cat([actions.float().unsqueeze(2),
+                                      states.unsqueeze(1).expand(-1, self.num_intentions, -1)], dim=2)
+        return critic_input
 
     def learn(self):
         for learn_idx in range(self.num_learning_iterations):
@@ -73,9 +86,7 @@ class Learner:
                 self.actor_opt.zero_grad()
                 task_actions, task_log_probs = self.actor.predict(states)
                 # TODO: Allow for multidimensional actions.
-                critic_input = torch.cat([task_actions.float().unsqueeze(2),
-                                          states.unsqueeze(1).expand(-1, self.actor.num_intentions, -1)], dim=2)
-                task_state_action_values = self.critic(critic_input)
+                task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
                 actor_loss.backward()
                 self.actor_opt.step()
@@ -86,16 +97,22 @@ class Learner:
                 self.critic_opt.zero_grad()
 
                 # TODO: Use batch to sample data without temporal correlation?
-                critic_input = torch.cat([actions, states], dim=1)
-                state_action_values = self.critic(critic_input)
-                target_state_action_values = self.target_critic(critic_input).detach()
-                # TODO: Use target actor for task_log_probs.
-                # TODO: Compute target_state_action_values based on trajectory states and current target actor actions.
-                critic_loss = self.critic_criterion(state_action_values,
-                                                    target_state_action_values,
+                critic_input = self.get_critic_input(actions, states)
+                state_trajectory_action_values = self.critic(critic_input)
+                target_state_trajectory_action_values = self.target_critic(critic_input)
+                target_task_actions, _ = self.target_actor.predict(states)
+                target_state_current_action_values = self.target_critic(self.get_critic_input(target_task_actions,
+                                                                                              states))
+                _, target_log_trajectory_task_action_probs = self.target_actor.predict(
+                    states,
+                    action=actions.expand(-1, self.actor.num_intentions)
+                )
+                critic_loss = self.critic_criterion(state_trajectory_action_values,
+                                                    target_state_trajectory_action_values.detach(),
+                                                    target_state_current_action_values.detach(),
                                                     rewards,
                                                     log_probs,
-                                                    task_log_probs.detach())
+                                                    target_log_trajectory_task_action_probs.detach())
                 critic_loss.backward()
                 self.critic_opt.step()
 

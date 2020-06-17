@@ -51,7 +51,7 @@ class Sampler:
                 # Get the action from current actor policy
                 obs = torch.tensor(obs, dtype=torch.float).unsqueeze(dim=0)
                 obs = obs.cuda() if self.use_gpu else obs
-                action, log_prob = self.actor.predict(obs, self.task_scheduler.current_task)
+                action, log_prob = self.actor.predict(obs, task=self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
                 obs, gym_reward, done, _ = self.env.step(action.item())
                 # # Modify the main task reward (the huge -100 and 100 values cause instability)
