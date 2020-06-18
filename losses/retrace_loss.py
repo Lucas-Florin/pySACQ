@@ -14,7 +14,7 @@ class RetraceLoss(nn.Module):
                  gamma=0.95):
         super().__init__()
         self.gamma = gamma
-        self.distance = nn.MSELoss()
+        self.distance = nn.SmoothL1Loss()
 
     def forward(self,
                 state_trajectory_action_values,
@@ -37,8 +37,8 @@ class RetraceLoss(nn.Module):
                                        - target_state_trajectory_action_values[j, :])
                 retrace_state_action_values[i, :] += importance * (reward + temporal_difference)
 
-        return self.distance(state_trajectory_action_values, retrace_state_action_values)
-
+        loss = self.distance(state_trajectory_action_values, retrace_state_action_values)
+        return loss
 
 
 

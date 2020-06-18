@@ -54,8 +54,8 @@ class Sampler:
                 action, log_prob = self.actor.predict(obs, task=self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
                 obs, gym_reward, done, _ = self.env.step(action.item())
-                # # Modify the main task reward (the huge -100 and 100 values cause instability)
-                # gym_reward /= 100.0
+                # Modify the main task reward (the huge -100 and 100 values cause instability)
+                gym_reward /= 100.0
                 # Reward is a vector of the reward for each task
                 reward = self.task_scheduler.reward(obs, gym_reward)
                 if self.writer:
