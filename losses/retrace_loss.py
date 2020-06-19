@@ -26,7 +26,7 @@ class RetraceLoss(nn.Module):
         # TODO: Figure out what the expectation in the temporal difference definition is supposed to be.
         num_steps = state_trajectory_action_values.shape[0]
         log_importance_weights = target_log_trajectory_task_action_probs - original_log_trajectory_action_probs
-        log_importance_weights = torch.clamp(log_importance_weights, min=0)
+        log_importance_weights = torch.clamp(log_importance_weights, max=0)
         retrace_state_action_values = torch.zeros_like(target_state_trajectory_action_values)
         # TODO: Implement without nested loops.
         for i in range(num_steps):
