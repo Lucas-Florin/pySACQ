@@ -83,6 +83,8 @@ def run(actor, env, min_rate=None, writer=None, render=False, use_gpu=False):
         step_toc = time.clock()
         step_time = step_toc - step_tic
         if render and min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
+            print("ACTION: {}".format(action.item()))
+            print("REWARD: {}".format(reward))
             time.sleep(min_rate - step_time)
         num_steps += 1
         TEST_STEP += 1
