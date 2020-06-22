@@ -163,7 +163,7 @@ class BaseTrainer:
                             help='Number of trajectories collected per acting cycle [default: 5]')
         parser.add_argument('--num_learning_iterations', type=int, default=1,
                             help='Number of learning iterations per learn cycle [default: 1]')
-        parser.add_argument('--episode_batch_size', type=int, default=2,
+        parser.add_argument('--episode_batch_size', type=int, default=1,
                             help='Number of trajectories per batch (gradient push) [default: 2]')
         parser.add_argument('--buffer_size', type=int, default=200,
                             help='Number of trajectories in replay buffer [default: 200]')

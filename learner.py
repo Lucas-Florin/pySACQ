@@ -66,13 +66,18 @@ class Learner:
 
     def get_critic_input_continuous(self, actions, states) -> torch.Tensor:
         # TODO: Allow for multidimensional actions.
-        assert actions.dim() == 3
+        assert actions.dim() >= 3
         assert states.dim() == 2
-        if actions.shape[1] == 1 and False:
+        if actions.shape[-2] == 1 and False:
             critic_input = torch.cat([actions, states], dim=1)
-        else:
+        elif actions.dim() == 3:
             critic_input = torch.cat([actions,
-                                      states.unsqueeze(1).expand(-1, self.num_intentions, -1)], dim=2)
+                                      states.unsqueeze(-2).expand(-1, self.num_intentions, -1)], dim=-1)
+        elif actions.dim() == 4:
+            critic_input = torch.cat([actions,
+                                      states.unsqueeze(-2).expand(actions.shape[0], -1, self.num_intentions, -1)], dim=-1)
+        else:
+            assert False
         return critic_input
 
     def get_critic_input_discrete(self, actions, states) -> torch.Tensor:
@@ -125,9 +130,9 @@ class Learner:
                 critic_input = self.get_critic_input(actions, states)
                 state_trajectory_action_values = self.critic(critic_input)
                 target_state_trajectory_action_values = self.target_critic(critic_input)
-                target_task_actions, _ = self.target_actor.predict(states)
+                target_task_actions, _ = self.target_actor.predict(states, sampling_batch=10)
                 target_state_current_action_values = self.target_critic(self.get_critic_input(target_task_actions,
-                                                                                              states))
+                                                                                              states)).mean(0)
                 _, target_log_trajectory_task_action_probs = self.target_actor.predict(
                     states,
                     action=self.expand_actions(actions)

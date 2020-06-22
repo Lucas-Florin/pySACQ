@@ -32,7 +32,7 @@ class ContinuousActor(SQXNet):
         self.logits = nn.Tanh()
         self.action_dim = action_dim
 
-    def predict(self, x, task=None, action=None, log_prob=True):
+    def predict(self, x, task=None, action=None, log_prob=True, sampling_batch=None):
         x = self(x, task)
         x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
@@ -45,7 +45,10 @@ class ContinuousActor(SQXNet):
         standard_deviations = (x[:, :, :self.action_dim] / 2 + 1) * 0.7 + 0.3
         dist = torch.distributions.Normal(means, standard_deviations)
         if action is None:
-            action = dist.sample()
+            if sampling_batch is None:
+                action = dist.sample()
+            else:
+                action = dist.sample([sampling_batch])
         log_prob = dist.log_prob(action)
         return action, log_prob
 
@@ -78,12 +81,20 @@ class ContinuousCritic(SQXNet):
     def forward(self, x, task=None):
         if x.dim() <= 2:
             return super().forward(x, task).squeeze()
-        else:
+        elif x.dim() == 3:
             assert x.dim() == 3
-            assert x.shape[1] == self.num_intentions
+            assert x.shape[-2] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):
                 x_list.append(super().forward(x[:, i, :].squeeze(), i))
-            x = torch.cat(x_list, dim=1)
+            x = torch.cat(x_list, dim=-2)
+            return x
+        else:
+            assert x.dim() == 4
+            assert x.shape[-2] == self.num_intentions
+            x_list = list()
+            for i in range(self.num_intentions):
+                x_list.append(super().forward(x[:, :, i, :].squeeze(), i))
+            x = torch.cat(x_list, dim=-2)
             return x
 

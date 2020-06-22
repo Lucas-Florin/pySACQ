@@ -112,7 +112,6 @@ class SQXNet(torch.nn.Module):
         # Feed the input through the base layers of the model
         #print(x.shape)
         d = x.dim()
-        assert d <= 2
         while x.dim() < 2:
             x = x.unsqueeze(0)
         x = self.layer1(x)
@@ -122,11 +121,11 @@ class SQXNet(torch.nn.Module):
         x = self.non_linear(self.layer2(x))
         if task is not None:  # single intention head
             x = self.intention_nets[task](x)
-            assert x.dim() == 2
+            assert x.dim() >= 2
             return x
         else:
             x = [net(x) for net in self.intention_nets]
-            x = torch.stack(x, dim=1)
+            x = torch.stack(x, dim=-2)
             return x
 
 
