@@ -81,29 +81,54 @@ def goal_distance(state):
     return reward
 
 
-class TaskScheduler(object):
-    """Class defines Scheduler for storing and picking tasks"""
+class BaseScheduler:
 
     def __init__(self):
-        self.aux_rewards = [touch,
-                            hover_planar,
-                            hover_angular,
-                            upright,
-                            goal_distance]
+        self.num_tasks = None
+
+        # Internal tracking variable for current task, and set of tasks
+        self.current_task = 0
+
+    def reset(self):
+        self.current_task = 0
+
+    def sample(self):
+        raise NotImplementedError
+
+    def reward(self, state, main_reward):
+        raise NotImplementedError
+
+
+class NoneScheduler(BaseScheduler):
+
+    def __init__(self):
+        super().__init__()
+        self.aux_rewards = []
+
+        # Number of tasks is number of auxiliary tasks plus the main task
+        self.num_tasks = 1
+
+    def sample(self):
+        pass
+
+    def reward(self, state, main_reward):
+        return [main_reward]
+
+
+class TaskScheduler(BaseScheduler):
+    """Class defines Scheduler for storing and picking tasks"""
+
+    def __init__(self, aux_rewards=None):
+        super().__init__()
+        if aux_rewards is None:
+            aux_rewards = list()
+        self.aux_rewards = aux_rewards
 
         # Number of tasks is number of auxiliary tasks plus the main task
         self.num_tasks = len(self.aux_rewards) + 1
 
-        # Internal tracking variable for current task, and set of tasks
-        self.current_task = 0
-        self.current_set = set()
-
-    def reset(self):
-        self.current_set = set()
-
     def sample(self):
         self.current_task = random.randint(0, self.num_tasks-1)
-        self.current_set.add(self.current_task)
 
     def reward(self, state, main_reward):
         reward_vector = []
@@ -112,3 +137,16 @@ class TaskScheduler(object):
         # Append main task reward
         reward_vector.append(main_reward)
         return reward_vector
+
+
+class LunarLanderScheduler(TaskScheduler):
+
+    def __init__(self):
+
+        aux_rewards = [touch,
+                       hover_planar,
+                       hover_angular,
+                       upright,
+                       goal_distance]
+
+        super().__init__(aux_rewards)

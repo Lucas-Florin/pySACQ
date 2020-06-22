@@ -4,7 +4,7 @@ import torch
 # Add local files to path
 from train import BaseTrainer
 from networks import Actor, Critic
-from tasks import TaskScheduler
+from tasks import LunarLanderScheduler
 from learner import Learner
 from sampler import Sampler
 
@@ -12,7 +12,7 @@ from sampler import Sampler
 class LunarLanderTrainer(BaseTrainer):
 
     def init_task_scheduler(self):
-        return TaskScheduler()
+        return LunarLanderScheduler()
 
     def init_env(self):
         return gym.make('LunarLander-v2')
