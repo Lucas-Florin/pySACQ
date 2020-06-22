@@ -31,7 +31,7 @@ class RetraceLoss(nn.Module):
         # TODO: Implement without nested loops.
         for i in range(num_steps):
             for j in range(i, num_steps):
-                importance = self.gamma ** (j - i) * torch.exp(log_importance_weights[i:j, :].sum(0))
+                importance = self.gamma ** (j - i) * torch.exp(log_importance_weights[i:j + 1, :].sum(0))
                 reward = rewards[j, :]
                 temporal_difference = (target_state_current_action_values[i, :]
                                        - target_state_trajectory_action_values[j, :])
