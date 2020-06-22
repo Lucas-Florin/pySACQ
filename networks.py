@@ -172,7 +172,6 @@ class DiscreteActor(SQXNet):
 
 class DiscreteCritic(SQXNet):
     """Class for Q-function (or critic) network"""
-    # TODO: One-hot encoding of actions input.
 
     def __init__(self,
                  num_intentions=6,
@@ -200,9 +199,7 @@ class DiscreteCritic(SQXNet):
         if x.dim() <= 2:
             return super().forward(x, task).squeeze()
         else:
-            # TODO: Document.
             assert x.dim() == 3
-            # TODO: Change intention dimension?
             assert x.shape[1] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):

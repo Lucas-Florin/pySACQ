@@ -122,7 +122,6 @@ class Learner:
                 self.actor.eval()
                 self.critic_opt.zero_grad()
 
-                # TODO: Use batch to sample data without temporal correlation?
                 critic_input = self.get_critic_input(actions, states)
                 state_trajectory_action_values = self.critic(critic_input)
                 target_state_trajectory_action_values = self.target_critic(critic_input)
