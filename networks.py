@@ -131,9 +131,7 @@ class SQXNet(torch.nn.Module):
             return x
 
 
-
-
-class Actor(SQXNet):
+class DiscreteActor(SQXNet):
     """Class for policy (or actor) network"""
 
     def __init__(self,
@@ -147,16 +145,16 @@ class Actor(SQXNet):
                  net_type=TaskHeadActor,
                  batch_norm=False,
                  use_gpu=True):
-        super(Actor, self).__init__(state_dim,
-                                    base_hidden_size,
-                                    num_intentions,
-                                    head_input_size,
-                                    head_hidden_size,
-                                    head_output_size,
-                                    non_linear,
-                                    net_type,
-                                    batch_norm,
-                                    use_gpu)
+        super(DiscreteActor, self).__init__(state_dim,
+                                            base_hidden_size,
+                                            num_intentions,
+                                            head_input_size,
+                                            head_hidden_size,
+                                            head_output_size,
+                                            non_linear,
+                                            net_type,
+                                            batch_norm,
+                                            use_gpu)
         self.logits = nn.Softmax(dim=-1)
 
     def predict(self, x, task=None, action=None, log_prob=True):
@@ -172,7 +170,7 @@ class Actor(SQXNet):
         return action
 
 
-class Critic(SQXNet):
+class DiscreteCritic(SQXNet):
     """Class for Q-function (or critic) network"""
     # TODO: One-hot encoding of actions input.
 
@@ -187,16 +185,16 @@ class Critic(SQXNet):
                  net_type=TaskHeadCritic,
                  batch_norm=False,
                  use_gpu=True):
-        super(Critic, self).__init__(state_dim,
-                                     base_hidden_size,
-                                     num_intentions,
-                                     head_input_size,
-                                     head_hidden_size,
-                                     head_output_size,
-                                     non_linear,
-                                     net_type,
-                                     batch_norm,
-                                     use_gpu)
+        super(DiscreteCritic, self).__init__(state_dim,
+                                             base_hidden_size,
+                                             num_intentions,
+                                             head_input_size,
+                                             head_hidden_size,
+                                             head_output_size,
+                                             non_linear,
+                                             net_type,
+                                             batch_norm,
+                                             use_gpu)
 
     def forward(self, x, task=None):
         if x.dim() <= 2:
@@ -216,8 +214,8 @@ class Critic(SQXNet):
 if __name__ == '__main__':
     print('Run this file directly to debug')
 
-    actor = Actor()
-    critic = Critic()
+    actor = DiscreteActor()
+    critic = DiscreteCritic()
 
     # Carry out a step on the environment to test out forward functions
     import gym

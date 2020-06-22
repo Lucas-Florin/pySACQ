@@ -3,34 +3,29 @@ import torch
 
 # Add local files to path
 from train import BaseTrainer
-from networks import DiscreteActor, DiscreteCritic
-from tasks import LunarLanderScheduler
+from networks_continuous import ContinuousActor, ContinuousCritic
+from tasks import NoneScheduler
 from learner import Learner
 from sampler import Sampler
 
 
-class LunarLanderTrainer(BaseTrainer):
+class PendulumTrainer(BaseTrainer):
 
     def init_task_scheduler(self):
-        return LunarLanderScheduler()
+        return NoneScheduler()
 
     def init_env(self):
-        return gym.make('LunarLander-v2')
+        return gym.make('Pendulum-v0')
 
     def get_nonlinear(self):
-        if self.args.non_linear == 'relu':
-            non_linear = torch.nn.ReLU()
-        elif self.args.non_linear == 'elu':
-            non_linear = torch.nn.ELU()
-        else:
-            raise ValueError('Invalid name for nonlinear function. ')
+        non_linear = torch.nn.ELU()
         return non_linear
 
     def get_actor(self):
-        return DiscreteActor(use_gpu=self.use_gpu, non_linear=self.non_linear, batch_norm=self.args.batch_norm)
+        return ContinuousActor(use_gpu=self.use_gpu)
 
     def get_critic(self):
-        return DiscreteCritic(use_gpu=self.use_gpu, non_linear=self.non_linear, batch_norm=self.args.batch_norm)
+        return ContinuousCritic(use_gpu=self.use_gpu)
 
     def get_sampler(self):
         return Sampler(self.actor, self.env, self.task, self.replay_buffer,
@@ -50,14 +45,10 @@ class LunarLanderTrainer(BaseTrainer):
     @staticmethod
     def define_args():
         parser = BaseTrainer.define_args()
-        # Model parameters
-        parser.add_argument('--non_linear', type=str, default='relu', help='Non-linearity in the nets [default: ReLU]')
-        parser.add_argument('--batch_norm', dest='batch_norm', default=False, action='store_true',
-                            help='Batch norm applied to input layers [default: False]')
 
         return parser
 
 
 if __name__ == '__main__':
-    trainer = LunarLanderTrainer()
+    trainer = PendulumTrainer()
 
