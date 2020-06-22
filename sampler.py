@@ -21,6 +21,7 @@ class Sampler:
                  num_trajectories=10,
                  task_period=10,
                  use_gpu=False,
+                 continuous=False,
                  writer=None):
 
         self.actor = actor
@@ -32,6 +33,7 @@ class Sampler:
         self.writer = writer
         self.step_counter = 0
         self.use_gpu = use_gpu
+        self.continuous = continuous
 
     def sample(self):
         for trajectory_idx in range(self.num_trajectories):
@@ -53,7 +55,10 @@ class Sampler:
                 obs = obs.cuda() if self.use_gpu else obs
                 action, log_prob = self.actor.predict(obs, task=self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
-                obs, gym_reward, done, _ = self.env.step(action.item())
+                gym_action = action.squeeze()
+                if self.continuous and gym_action.dim() == 0:
+                    gym_action = gym_action.unsqueeze(0)
+                obs, gym_reward, done, _ = self.env.step(gym_action)
                 # Modify the main task reward (the huge -100 and 100 values cause instability)
                 gym_reward /= 100.0
                 # Reward is a vector of the reward for each task
@@ -75,7 +80,9 @@ class Sampler:
             for t in (observations, actions, log_probs, rewards):
                 if t.dim() == 1:
                     t.unsqueeze_(1)
-                assert t.dim() == 2
+            for t in (actions, log_probs):
+                if t.dim() == 2 and self.continuous:
+                    t.unsqueeze_(1)
             trajectory = Trajectory(observations, actions, log_probs, rewards)
             self.replay_buffer.append(trajectory)
 

@@ -27,6 +27,8 @@ class BaseTrainer:
         self.replay_buffer = deque(maxlen=self.args.buffer_size)
 
         # Environment is the lunar lander from OpenAI gym
+
+        self.continuous = False
         self.env = self.init_env()
 
         # task scheduler is defined in tasks.py
@@ -49,8 +51,7 @@ class BaseTrainer:
             # Non-linearity is an argument
             self.non_linear = self.get_nonlinear()
 
-
-            # New actor and critic policies
+            # Actor and Critic networks
             actor = self.get_actor()
             critic = self.get_critic()
             self.actor = actor.cuda() if self.use_gpu else actor
@@ -59,26 +60,23 @@ class BaseTrainer:
             self.learner = self.get_learner()
             self.sampler = self.get_sampler()
 
-            print('Start training. ')
-            for i in range(self.args.num_train_cycles):
-                print('Training cycle %s of %s' % (i, self.args.num_train_cycles))
-                self.sampler.sample()
-                self.learner.learn()
-                self.run()
-                # Remove early trajectories when buffer gets too large
+            self.train()
 
             # Save the model to local directory
             if self.args.saveas is not None:
-                save_path = str(root_dir / 'local' / 'models' / self.args.saveas)
-                Path(str(root_dir / 'local' / 'models/')).mkdir(parents=True, exist_ok=True)
-                print('Saving models to %s' % save_path)
-                torch.save(actor, save_path + '_actor.pt')
-                torch.save(critic, save_path + '_critic.pt')
-                print('...done')
+                self.save()
 
         # Close writer
         if self.writer is not None:
             self.writer.close()
+
+    def save(self):
+        save_path = str(root_dir / 'local' / 'models' / self.args.saveas)
+        Path(str(root_dir / 'local' / 'models/')).mkdir(parents=True, exist_ok=True)
+        print('Saving models to %s' % save_path)
+        torch.save(self.actor, save_path + '_actor.pt')
+        torch.save(self.critic, save_path + '_critic.pt')
+        print('...done')
 
     def init_task_scheduler(self):
         raise NotImplementedError
@@ -111,6 +109,14 @@ class BaseTrainer:
 
     def evaluate(self):
         self.run(render=self.args.render)
+
+    def train(self):
+        print('Start training. ')
+        for i in range(self.args.num_train_cycles):
+            print('Training cycle %s of %s' % (i, self.args.num_train_cycles))
+            self.sampler.sample()
+            self.learner.learn()
+            self.run()
 
     def check_gpu(self):
         # Make sure we can use gpu
@@ -188,7 +194,10 @@ class BaseTrainer:
             obs = obs.cuda() if self.use_gpu else obs
             action, _ = self.actor.predict(obs, task=-1)  # Last intention is main task
             # Step the environment and push outputs to policy
-            obs, reward, done, _ = self.env.step(action.item())
+            gym_action = action.squeeze()
+            if self.continuous and gym_action.dim() == 0:
+                gym_action = gym_action.unsqueeze(0)
+            obs, reward, done, _ = self.env.step(gym_action)
             if self.writer:
                 self.writer.add_scalar('test/reward', reward, self.test_step)
             step_toc = time.clock()

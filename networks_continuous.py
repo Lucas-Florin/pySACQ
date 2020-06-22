@@ -36,9 +36,13 @@ class ContinuousActor(SQXNet):
         x = self(x, task)
         x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
+        if task is not None:
+            x = x.unsqueeze(1)
+
+        assert x.dim() == 3
         # Intention head determines parameters of Categorical distribution
-        means = x[self.action_dim:] * 2
-        standard_deviations = x[:self.action_dim]
+        means = x[:, :, self.action_dim:] * 2
+        standard_deviations = (x[:, :, :self.action_dim] / 2 + 1) * 0.7 + 0.3
         dist = torch.distributions.Normal(means, standard_deviations)
         if action is None:
             action = dist.sample()
@@ -50,8 +54,8 @@ class ContinuousCritic(SQXNet):
     """Class for Q-function (or critic) network"""
 
     def __init__(self,
-                 num_intentions=6,
-                 state_dim=9,
+                 num_intentions=1,
+                 state_dim=4,
                  base_hidden_size=64,
                  head_input_size=64,
                  head_hidden_size=32,
@@ -83,22 +87,3 @@ class ContinuousCritic(SQXNet):
             x = torch.cat(x_list, dim=1)
             return x
 
-
-if __name__ == '__main__':
-    print('Run this file directly to debug')
-
-    actor = ContinuousActor()
-    critic = ContinuousCritic()
-
-    # Carry out a step on the environment to test out forward functions
-    import gym
-
-    env = gym.make('LunarLander-v2')
-    obs = env.reset()
-    task_idx = np.random.randint(6)
-
-    # Get the action from current actor policy
-    action = actor.predict(torch.tensor([obs]), task_idx)
-    _, _, _, _ = env.step(action.item())
-
-    print('Got to end sucessfully! (Though this only means there are no major bugs..)')

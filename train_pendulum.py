@@ -15,6 +15,7 @@ class PendulumTrainer(BaseTrainer):
         return NoneScheduler()
 
     def init_env(self):
+        self.continuous = True
         return gym.make('Pendulum-v0')
 
     def get_nonlinear(self):
@@ -32,6 +33,7 @@ class PendulumTrainer(BaseTrainer):
                        num_trajectories=self.args.num_trajectories,
                        task_period=30,
                        use_gpu=self.use_gpu,
+                       continuous=True,
                        writer=self.writer
                        )
 
@@ -40,6 +42,7 @@ class PendulumTrainer(BaseTrainer):
                        num_learning_iterations=self.args.num_learning_iterations,
                        episode_batch_size=self.args.episode_batch_size,
                        use_gpu=self.use_gpu,
+                       continuous=True,
                        writer=self.writer)
 
     @staticmethod
