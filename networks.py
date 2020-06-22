@@ -86,7 +86,7 @@ class SQXNet(torch.nn.Module):
         self.layer2 = nn.Linear(base_hidden_size, head_input_size)
         if self.batch_norm:
             # TODO: Batch norm or Layer norm?
-            self.bn1 = nn.BatchNorm1d(base_hidden_size)
+            self.bn1 = nn.LayerNorm(base_hidden_size)
         self.init_weights()
 
         # Create the many intention nets heads
@@ -98,9 +98,8 @@ class SQXNet(torch.nn.Module):
                                                           output_size=head_output_size,
                                                           use_gpu=use_gpu,
                                                           non_linear=non_linear))
-        if self.use_gpu:
-            for net in self.intention_nets:
-                net.cuda()
+
+        self.intention_nets = nn.ModuleList(self.intention_nets)
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
