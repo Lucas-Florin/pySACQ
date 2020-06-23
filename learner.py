@@ -20,7 +20,8 @@ class Learner:
                  task_scheduler,
                  replay_buffer: list,
                  num_learning_iterations=10,
-                 episode_batch_size=10,
+                 episode_batch_size=32,
+                 expectation_sample_size=8,
                  lr=0.0002,
                  use_gpu=False,
                  continuous=False,
@@ -35,6 +36,7 @@ class Learner:
         self.lr = lr
         self.writer = writer
         self.num_intentions = self.actor.num_intentions
+        self.expectation_sample_size = expectation_sample_size
 
         self.use_gpu = use_gpu
         self.continuous = continuous
@@ -130,7 +132,7 @@ class Learner:
                 critic_input = self.get_critic_input(actions, states)
                 state_trajectory_action_values = self.critic(critic_input)
                 target_state_trajectory_action_values = self.target_critic(critic_input)
-                target_task_actions, _ = self.target_actor.predict(states, sampling_batch=10)
+                target_task_actions, _ = self.target_actor.predict(states, sampling_batch=self.expectation_sample_size)
                 target_state_current_action_values = self.target_critic(self.get_critic_input(target_task_actions,
                                                                                               states)).mean(0)
                 _, target_log_trajectory_task_action_probs = self.target_actor.predict(
