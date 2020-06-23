@@ -86,7 +86,7 @@ class ContinuousCritic(SQXNet):
             assert x.shape[-2] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):
-                x_list.append(super().forward(x[:, i, :].squeeze(), i))
+                x_list.append(super().forward(x[:, i, :].squeeze(-2), i))
             x = torch.cat(x_list, dim=-2)
             return x
         else:
@@ -94,7 +94,7 @@ class ContinuousCritic(SQXNet):
             assert x.shape[-2] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):
-                x_list.append(super().forward(x[:, :, i, :].squeeze(), i))
+                x_list.append(super().forward(x[:, :, i, :].squeeze(-2), i))
             x = torch.cat(x_list, dim=-2)
             return x
 
