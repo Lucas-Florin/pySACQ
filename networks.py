@@ -85,7 +85,6 @@ class SQXNet(torch.nn.Module):
         self.layer1 = nn.Linear(state_dim, base_hidden_size)
         self.layer2 = nn.Linear(base_hidden_size, head_input_size)
         if self.batch_norm:
-            # TODO: Batch norm or Layer norm?
             self.bn1 = nn.LayerNorm(base_hidden_size)
         self.init_weights()
 

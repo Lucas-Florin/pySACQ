@@ -23,6 +23,7 @@ class Sampler:
                  use_gpu=False,
                  continuous=False,
                  reward_scaling_factor=1.0,
+                 skip_steps=8,
                  writer=None):
 
         self.actor = actor
@@ -36,6 +37,7 @@ class Sampler:
         self.use_gpu = use_gpu
         self.continuous = continuous
         self.reward_scaling_factor = reward_scaling_factor
+        self.skip_steps = skip_steps
 
     def sample(self):
         for trajectory_idx in range(self.num_trajectories):
@@ -60,12 +62,13 @@ class Sampler:
                 gym_action = action.cpu().squeeze()
                 if self.continuous and gym_action.dim() == 0:
                     gym_action = gym_action.unsqueeze(0)
-                # TODO: Skip actions.
-                obs, gym_reward, done, _ = self.env.step(gym_action)
+                gym_reward = list()
+                for _ in range(self.skip_steps):
+                    obs, r, done, _ = self.env.step(gym_action)
+                    gym_reward.append(r)
                 # Modify the main task reward (the huge -100 and 100 values cause instability)
-                gym_reward *= self.reward_scaling_factor
                 # Reward is a vector of the reward for each task
-                reward = self.task_scheduler.reward(obs, gym_reward)
+                reward = self.task_scheduler.reward(obs, np.mean(gym_reward) * self.reward_scaling_factor)
                 if self.writer:
                     for i, r in enumerate(reward):
                         self.writer.add_scalar('train/reward/%s' % i, r, self.step_counter)

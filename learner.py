@@ -40,7 +40,6 @@ class Learner:
         self.continuous = continuous
         self.step_counter = 0
 
-        # TODO: Adjust learning rates.
         self.actor_opt = torch.optim.Adam(actor.parameters(), lr)
         self.critic_opt = torch.optim.Adam(critic.parameters(), lr)
 
