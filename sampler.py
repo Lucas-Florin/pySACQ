@@ -57,7 +57,7 @@ class Sampler:
                 obs = obs.cuda() if self.use_gpu else obs
                 action, log_prob = self.actor.predict(obs, task=self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
-                gym_action = action.squeeze()
+                gym_action = action.cpu().squeeze()
                 if self.continuous and gym_action.dim() == 0:
                     gym_action = gym_action.unsqueeze(0)
                 # TODO: Skip actions.
