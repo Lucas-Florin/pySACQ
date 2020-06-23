@@ -40,9 +40,8 @@ class RetraceLossRecursive(nn.Module):
 
         retrace_state_action_values[-1, :] = importance_weights[-1, :] * temporal_difference[-1, :]
         for j in range(num_steps - 2, -1, -1):
-            retrace_state_action_values[j, :] = (importance_weights[j, :] * temporal_difference[j, :]
-                                                 + (self.gamma * importance_weights[j + 1, :]
-                                                    * temporal_difference[j + 1, :]))
+            retrace_state_action_values[j, :] = (importance_weights[j, :] * (temporal_difference[j, :]
+                                                 + self.gamma * retrace_state_action_values[j + 1, :]))
 
         loss = self.distance(state_trajectory_action_values, retrace_state_action_values)
         return loss
