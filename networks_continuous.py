@@ -32,7 +32,7 @@ class ContinuousActor(SQXNet):
         self.logits = nn.Tanh()
         self.action_dim = action_dim
 
-    def predict(self, x, task=None, action=None, log_prob=True, sampling_batch=None):
+    def predict(self, x, task=None, action=None, sampling_batch=None, requires_grad=False):
         x = self(x, task)
         x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
@@ -42,10 +42,16 @@ class ContinuousActor(SQXNet):
         assert x.dim() == 3
         # Intention head determines parameters of Categorical distribution
         means = x[:, :, self.action_dim:] * 2
-        standard_deviations = (x[:, :, :self.action_dim] / 2 + 1) * 0.7 + 0.3
+        # TODO: Scale standard deviation
+        standard_deviations = (x[:, :, :self.action_dim] / 2 + 0.5) * 0.3
         dist = torch.distributions.Normal(means, standard_deviations)
+        aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
+        # TODO: Retain Gradients through sampling.
         if action is None:
-            if sampling_batch is None:
+            if requires_grad:
+                assert sampling_batch is None
+                action = aux_dist.sample() * standard_deviations + means
+            elif sampling_batch is None:
                 action = dist.sample()
             else:
                 action = dist.sample([sampling_batch])

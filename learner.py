@@ -117,7 +117,7 @@ class Learner:
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                task_actions, task_log_probs = self.actor.predict(states)
+                task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
 
                 task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
