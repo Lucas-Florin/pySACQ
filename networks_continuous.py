@@ -43,7 +43,7 @@ class ContinuousActor(SQXNet):
         # Intention head determines parameters of Categorical distribution
         means = x[:, :, self.action_dim:] * 2
         # TODO: Scale standard deviation
-        standard_deviations = (x[:, :, :self.action_dim] / 2 + 0.5) * 0.3
+        standard_deviations = (x[:, :, :self.action_dim] / 2 + 0.5) * 0.3 + 0.1
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
         # TODO: Retain Gradients through sampling.
