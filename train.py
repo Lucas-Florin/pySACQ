@@ -194,7 +194,7 @@ class BaseTrainer:
             obs = obs.cuda() if self.use_gpu else obs
             action, _ = self.actor.predict(obs, task=-1)  # Last intention is main task
             # Step the environment and push outputs to policy
-            gym_action = action.squeeze()
+            gym_action = action.cpu().squeeze()
             if self.continuous and gym_action.dim() == 0:
                 gym_action = gym_action.unsqueeze(0)
             obs, reward, done, _ = self.env.step(gym_action)

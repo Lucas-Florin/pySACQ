@@ -11,10 +11,11 @@ class RetraceLossRecursive(nn.Module):
     """
 
     def __init__(self,
-                 gamma=0.95):
+                 gamma=0.95, use_gpu=False):
         super().__init__()
         self.gamma = gamma
         self.distance = nn.SmoothL1Loss()
+        self.use_gpu = use_gpu
 
     def forward(self,
                 state_trajectory_action_values,
@@ -28,8 +29,10 @@ class RetraceLossRecursive(nn.Module):
         num_intentions = state_trajectory_action_values.shape[1]
         log_importance_weights = target_log_trajectory_task_action_probs - original_log_trajectory_action_probs
         importance_weights = torch.exp(torch.clamp(log_importance_weights, max=0))
+        padding = torch.zeros((1, num_intentions))
+        padding = padding.cuda() if self.use_gpu else padding
         target_state_current_action_values = torch.cat([target_state_current_action_values[1:, :],
-                                                        torch.zeros((1, num_intentions))], dim=0)
+                                                        padding], dim=0)
         temporal_difference = (self.gamma * target_state_current_action_values
                                - target_state_trajectory_action_values)
         temporal_difference = rewards + temporal_difference

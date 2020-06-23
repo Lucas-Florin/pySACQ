@@ -45,7 +45,7 @@ class Learner:
 
         # TODO: Specify alpha and gamma parameters.
         self.actor_criterion = ActorLoss()
-        self.critic_criterion = RetraceLossRecursive()
+        self.critic_criterion = RetraceLossRecursive(use_gpu=use_gpu)
 
         self.target_actor = copy.deepcopy(self.actor)
         self.target_critic = copy.deepcopy(self.critic)
