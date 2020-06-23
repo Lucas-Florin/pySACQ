@@ -37,6 +37,7 @@ class LunarLanderTrainer(BaseTrainer):
                        num_trajectories=self.args.num_trajectories,
                        task_period=30,
                        use_gpu=self.use_gpu,
+                       reward_scaling_factor=1/100,
                        writer=self.writer
                        )
 

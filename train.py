@@ -29,6 +29,7 @@ class BaseTrainer:
         # Environment is the lunar lander from OpenAI gym
 
         self.continuous = False
+        self.reward_scaling_factor = 1.0
         self.env = self.init_env()
 
         # task scheduler is defined in tasks.py
@@ -37,6 +38,7 @@ class BaseTrainer:
         # Write tensorboard logs to local logs folder
         self.writer = None
         if self.args.log:
+            # TODO: Optimize Tensorboard.
             log_dir = root_dir / 'local' / 'logs' / self.args.log
             self.writer = SummaryWriter(log_dir=str(log_dir))
 
