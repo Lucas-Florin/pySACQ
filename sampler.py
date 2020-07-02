@@ -78,6 +78,7 @@ class Sampler:
                 log_probs.append(log_prob.detach())
                 rewards.append(torch.tensor(reward))
                 num_steps += 1
+                self.step_counter += 1
             # Add trajectory to replay buffer
             observations = torch.stack(observations).float()
             actions = torch.cat(actions).float()

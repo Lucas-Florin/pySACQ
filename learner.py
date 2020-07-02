@@ -142,7 +142,6 @@ class Learner:
                 states,
                 action=self.expand_actions(actions)
             )
-            start = time.time()
             critic_loss = self.critic_criterion(state_trajectory_action_values,
                                                 target_state_trajectory_action_values.detach(),
                                                 target_expected_state_values.detach(),
@@ -150,7 +149,6 @@ class Learner:
                                                 log_probs,
                                                 target_log_trajectory_task_action_probs.detach())
             critic_loss.backward()
-            print(time.time() - start)
             nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
             self.critic_opt.step()
 
