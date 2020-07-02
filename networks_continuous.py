@@ -81,8 +81,7 @@ class ContinuousCritic(SQXNet):
                                                use_gpu)
 
     def forward(self, x, task=None):
-        assert x.dim() == 3
-        if task is not None:
+        if task is not None or x.dim() == 2:
             return super().forward(x, task)
         elif x.dim() == 3:
             assert x.dim() == 3

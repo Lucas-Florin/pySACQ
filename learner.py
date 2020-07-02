@@ -70,14 +70,11 @@ class Learner:
             return self.get_critic_input_discrete(actions, states)
 
     def get_critic_input_continuous(self, actions, states) -> torch.Tensor:
-        actions, states = tuple(
-            [t.unsqueeze(-2).expand(-1, self.num_intentions, -1) if t.dim() == 2 else t
-             for t in (states, actions)]
-        )
-        assert actions.dim() == 3
-        assert states.dim() == 3
+        if actions.dim() == 3 and states.dim() == 2:
+            states = states.unsqueeze(-2).expand(-1, self.num_intentions, -1)
+
+        assert actions.dim() == states.dim()
         critic_input = torch.cat([actions, states], dim=-1)
-        assert critic_input.dim() == 3
         return critic_input
 
     def get_critic_input_discrete(self, actions, states) -> torch.Tensor:
