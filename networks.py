@@ -118,8 +118,9 @@ class SQXNet(torch.nn.Module):
             x = self.intention_nets[task](x)
             return x
         else:
+            # TODO: For Single output (discrete) actors. is this squeeze() a problem?
             x = [net(x) for net in self.intention_nets]
-            x = torch.stack(x, dim=-2)
+            x = torch.stack(x, dim=-2).squeeze(-1)
             return x
 
 

@@ -88,7 +88,7 @@ class ContinuousCritic(SQXNet):
             assert x.shape[-2] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):
-                x_list.append(super().forward(x.narrow(-2, i, 1), task=i))
+                x_list.append(super().forward(x.narrow(-2, i, 1), task=i).squeeze(-1))
             x = torch.cat(x_list, dim=-1)
             return x
         else:
