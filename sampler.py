@@ -23,7 +23,7 @@ class Sampler:
                  use_gpu=False,
                  continuous=False,
                  reward_scaling_factor=1.0,
-                 skip_steps=8,
+                 skip_steps=1,
                  writer=None):
 
         self.actor = actor
@@ -71,24 +71,19 @@ class Sampler:
                 reward = self.task_scheduler.reward(obs, np.mean(gym_reward) * self.reward_scaling_factor)
                 if self.writer:
                     for i, r in enumerate(reward):
+                        # TODO: Fix.
                         self.writer.add_scalar('train/reward/%s' % i, r, self.step_counter)
                 # group information into a step and add to current trajectory
-                observations.append(obs)
+                observations.append(torch.tensor(obs))
                 actions.append(action.detach())
                 log_probs.append(log_prob.detach())
-                rewards.append(reward)
+                rewards.append(torch.tensor(reward))
                 num_steps += 1
             # Add trajectory to replay buffer
-            observations = torch.tensor(observations, dtype=torch.float)
-            actions = torch.tensor(actions, dtype=torch.float)
-            log_probs = torch.tensor(log_probs, dtype=torch.float)
-            rewards = torch.tensor(rewards, dtype=torch.float)
-            for t in (observations, actions, log_probs, rewards):
-                if t.dim() == 1:
-                    t.unsqueeze_(1)
-            for t in (actions, log_probs):
-                if t.dim() == 2 and self.continuous:
-                    t.unsqueeze_(1)
+            observations = torch.stack(observations).float()
+            actions = torch.cat(actions).float()
+            log_probs = torch.cat(log_probs).float()
+            rewards = torch.stack(rewards).float()
             trajectory = Trajectory(observations, actions, log_probs, rewards)
             self.replay_buffer.append(trajectory)
 

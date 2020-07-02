@@ -19,16 +19,16 @@ class ContinuousActor(SQXNet):
                  net_type=TaskHeadActor,
                  batch_norm=False,
                  use_gpu=True):
-        super(ContinuousActor, self).__init__(state_dim,
-                                              base_hidden_size,
-                                              num_intentions,
-                                              head_input_size,
-                                              head_hidden_size,
-                                              action_dim * 2,
-                                              non_linear,
-                                              net_type,
-                                              batch_norm,
-                                              use_gpu)
+        super(ContinuousActor, self).__init__(state_dim=state_dim,
+                                              base_hidden_size=base_hidden_size,
+                                              num_intentions=num_intentions,
+                                              head_input_size=head_input_size,
+                                              head_hidden_size=head_hidden_size,
+                                              head_output_size=action_dim * 2,
+                                              non_linear=non_linear,
+                                              intention_net_type=net_type,
+                                              batch_norm=batch_norm,
+                                              use_gpu=use_gpu)
         self.logits = nn.Tanh()
         self.action_dim = action_dim
 
@@ -36,14 +36,10 @@ class ContinuousActor(SQXNet):
         x = self(x, task)
         x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
-        if task is not None:
-            x = x.unsqueeze(1)
-
-        assert x.dim() == 3
         # Intention head determines parameters of Categorical distribution
-        means = x[:, :, self.action_dim:] * 2
+        means = x.narrow(-1, 0, self.action_dim) * 2
         # TODO: Scale standard deviation
-        standard_deviations = (x[:, :, :self.action_dim] / 2 + 0.5) * 0.3 + 0.1
+        standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) / 2 + 0.5) * 0.3 + 0.1
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
         # TODO: Retain Gradients through sampling.
@@ -55,7 +51,7 @@ class ContinuousActor(SQXNet):
                 action = dist.sample()
             else:
                 action = dist.sample([sampling_batch])
-        log_prob = dist.log_prob(action)
+        log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob
 
 
@@ -85,22 +81,17 @@ class ContinuousCritic(SQXNet):
                                                use_gpu)
 
     def forward(self, x, task=None):
-        if x.dim() <= 2:
-            return super().forward(x, task).squeeze()
+        assert x.dim() == 3
+        if task is not None:
+            return super().forward(x, task)
         elif x.dim() == 3:
             assert x.dim() == 3
             assert x.shape[-2] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):
-                x_list.append(super().forward(x[:, i, :].squeeze(-2), i))
-            x = torch.cat(x_list, dim=-2)
+                x_list.append(super().forward(x.narrow(-2, i, 1), task=i))
+            x = torch.cat(x_list, dim=-1)
             return x
         else:
-            assert x.dim() == 4
-            assert x.shape[-2] == self.num_intentions
-            x_list = list()
-            for i in range(self.num_intentions):
-                x_list.append(super().forward(x[:, :, i, :].squeeze(-2), i))
-            x = torch.cat(x_list, dim=-2)
-            return x
+            assert False
 

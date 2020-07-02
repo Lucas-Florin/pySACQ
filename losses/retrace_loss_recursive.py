@@ -31,7 +31,8 @@ class RetraceLossRecursive(nn.Module):
             target_state_trajectory_action_values = target_state_trajectory_action_values[1:, :]
             target_expected_state_values = target_expected_state_values[1:, :]
             num_steps = state_trajectory_action_values.shape[0]
-            log_importance_weights = target_log_trajectory_task_action_probs - original_log_trajectory_action_probs
+            log_importance_weights = (target_log_trajectory_task_action_probs
+                                      - original_log_trajectory_action_probs.unsqueeze(-1))
             importance_weights = torch.exp(torch.clamp(log_importance_weights, max=0))[1:, :]
             retrace_state_action_values = torch.zeros_like(state_trajectory_action_values)
 

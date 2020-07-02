@@ -1,6 +1,7 @@
 # Import Python packages
 import random
 import copy
+import time
 
 # Import libraries
 import torch
@@ -9,6 +10,7 @@ import torch.nn as nn
 # Import losses
 from losses.retrace_loss import RetraceLoss
 from losses.retrace_loss_recursive import RetraceLossRecursive
+from losses.retrace_loss_recursive_fast import RetraceLossRecursiveFast
 from losses.actor_loss import ActorLoss
 
 
@@ -40,6 +42,7 @@ class Learner:
 
         self.use_gpu = use_gpu
         self.continuous = continuous
+        self.max_grad_norm = 10.0
         self.step_counter = 0
 
         self.actor_opt = torch.optim.Adam(actor.parameters(), lr)
@@ -67,19 +70,14 @@ class Learner:
             return self.get_critic_input_discrete(actions, states)
 
     def get_critic_input_continuous(self, actions, states) -> torch.Tensor:
-        # TODO: Allow for multidimensional actions.
-        assert actions.dim() >= 3
-        assert states.dim() == 2
-        if actions.shape[-2] == 1 and False:
-            critic_input = torch.cat([actions, states], dim=1)
-        elif actions.dim() == 3:
-            critic_input = torch.cat([actions,
-                                      states.unsqueeze(-2).expand(-1, self.num_intentions, -1)], dim=-1)
-        elif actions.dim() == 4:
-            critic_input = torch.cat([actions,
-                                      states.unsqueeze(-2).expand(actions.shape[0], -1, self.num_intentions, -1)], dim=-1)
-        else:
-            assert False
+        actions, states = tuple(
+            [t.unsqueeze(-2).expand(-1, self.num_intentions, -1) if t.dim() == 2 else t
+             for t in (states, actions)]
+        )
+        assert actions.dim() == 3
+        assert states.dim() == 3
+        critic_input = torch.cat([actions, states], dim=-1)
+        assert critic_input.dim() == 3
         return critic_input
 
     def get_critic_input_discrete(self, actions, states) -> torch.Tensor:
@@ -94,9 +92,17 @@ class Learner:
 
     def expand_actions(self, actions):
         if self.continuous:
-            return actions.expand(-1, self.actor.num_intentions, -1)
+            return actions.unsqueeze(-2).expand(-1, self.actor.num_intentions, -1)
         else:
             return actions.expand(-1, self.actor.num_intentions)
+
+    def get_batch(self, size=1):
+        trajectory = random.choice(self.replay_buffer)
+        states = trajectory.states
+        rewards = trajectory.rewards
+        actions = trajectory.actions
+        log_probs = trajectory.log_probs
+        return tuple([t.cuda() if self.use_gpu else t for t in [states, rewards, actions, log_probs]])
 
     def learn(self):
         for learn_idx in range(self.num_learning_iterations):
@@ -106,11 +112,7 @@ class Learner:
             # TODO: Implement true batch learning.
             for batch_idx in range(self.episode_batch_size):
                 # Sample a random trajectory from the replay buffer
-                trajectory = random.choice(self.replay_buffer)
-                states = trajectory.states.cuda() if self.use_gpu else trajectory.states
-                rewards = trajectory.rewards.cuda() if self.use_gpu else trajectory.rewards
-                actions = trajectory.actions.cuda() if self.use_gpu else trajectory.actions
-                log_probs = trajectory.log_probs.cuda() if self.use_gpu else trajectory.log_probs
+                states, rewards, actions, log_probs = self.get_batch()
                 num_steps = states.shape[0]
 
                 # Train actor.
@@ -122,7 +124,7 @@ class Learner:
                 task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
                 actor_loss.backward()
-                nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10.0)
+                nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
                 self.actor_opt.step()
 
                 # Train critic.
@@ -133,21 +135,23 @@ class Learner:
                 critic_input = self.get_critic_input(actions, states)
                 state_trajectory_action_values = self.critic(critic_input)
                 target_state_trajectory_action_values = self.target_critic(critic_input)
-                target_task_actions, _ = self.target_actor.predict(states, sampling_batch=self.expectation_sample_size)
-                target_state_current_action_values = self.target_critic(self.get_critic_input(target_task_actions,
-                                                                                              states)).mean(0)
+                # TODO: Implement sampling for calculating expectation.
+                target_task_actions, _ = self.target_actor.predict(states)
+                target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
                 _, target_log_trajectory_task_action_probs = self.target_actor.predict(
                     states,
                     action=self.expand_actions(actions)
                 )
+                start = time.time()
                 critic_loss = self.critic_criterion(state_trajectory_action_values,
                                                     target_state_trajectory_action_values.detach(),
-                                                    target_state_current_action_values.detach(),
+                                                    target_expected_state_values.detach(),
                                                     rewards,
                                                     log_probs,
                                                     target_log_trajectory_task_action_probs.detach())
                 critic_loss.backward()
-                nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=10.0)
+                print(time.time() - start)
+                nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
                 self.critic_opt.step()
 
                 # Write to log.
