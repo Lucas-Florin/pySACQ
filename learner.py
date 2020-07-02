@@ -122,6 +122,7 @@ class Learner:
                 task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
                 actor_loss.backward()
+                nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10.0)
                 self.actor_opt.step()
 
                 # Train critic.
@@ -146,6 +147,7 @@ class Learner:
                                                     log_probs,
                                                     target_log_trajectory_task_action_probs.detach())
                 critic_loss.backward()
+                nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=10.0)
                 self.critic_opt.step()
 
                 # Write to log.
