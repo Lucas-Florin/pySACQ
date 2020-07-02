@@ -42,7 +42,6 @@ class ContinuousActor(SQXNet):
         standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) / 2 + 0.5) * 0.3 + 0.1
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
-        # TODO: Retain Gradients through sampling.
         if action is None:
             if requires_grad:
                 assert sampling_batch is None

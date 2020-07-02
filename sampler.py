@@ -71,7 +71,6 @@ class Sampler:
                 reward = self.task_scheduler.reward(obs, np.mean(gym_reward) * self.reward_scaling_factor)
                 if self.writer:
                     for i, r in enumerate(reward):
-                        # TODO: Fix.
                         self.writer.add_scalar('train/reward/%s' % i, r, self.step_counter)
                 # group information into a step and add to current trajectory
                 observations.append(torch.tensor(obs))

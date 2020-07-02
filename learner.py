@@ -113,8 +113,7 @@ class Learner:
             # print('Learning: trajectory %s of %s' % (learn_idx + 1, num_learning_iterations))
             # Optimizers for critic and actor
 
-            # TODO: Implement true batch learning.
-            # Sample a random trajectory from the replay buffer
+            # Sample a random batch of trajectories from the replay buffer
             states, actions, log_probs, rewards = self.get_batch(self.episode_batch_size)
 
             # Train actor.
