@@ -70,8 +70,8 @@ class Learner:
             return self.get_critic_input_discrete(actions, states)
 
     def get_critic_input_continuous(self, actions, states) -> torch.Tensor:
-        if actions.dim() == 3 and states.dim() == 2:
-            states = states.unsqueeze(-2).expand(-1, self.num_intentions, -1)
+        if actions.dim() == 4 and states.dim() == 3:
+            states = states.unsqueeze(-2).expand(*([-1] * (actions.dim() - 2) + [self.num_intentions, -1]))
 
         assert actions.dim() == states.dim()
         critic_input = torch.cat([actions, states], dim=-1)
@@ -89,17 +89,24 @@ class Learner:
 
     def expand_actions(self, actions):
         if self.continuous:
-            return actions.unsqueeze(-2).expand(-1, self.actor.num_intentions, -1)
+            return actions.unsqueeze(-2).expand(-1, -1, self.actor.num_intentions, -1)
         else:
+            assert False
             return actions.expand(-1, self.actor.num_intentions)
 
     def get_batch(self, size=1):
-        trajectory = random.choice(self.replay_buffer)
-        states = trajectory.states
-        rewards = trajectory.rewards
-        actions = trajectory.actions
-        log_probs = trajectory.log_probs
-        return tuple([t.cuda() if self.use_gpu else t for t in [states, rewards, actions, log_probs]])
+        """
+        returns -- (states, actions, log_probs, rewards)
+        """
+        trajectories = random.choices(self.replay_buffer, k=size)
+        tensors = [
+            torch.stack([
+                trajectory[tensor]
+                for trajectory in trajectories
+            ])
+            for tensor in range(4)
+        ]
+        return tuple([t.cuda() if self.use_gpu else t for t in tensors])
 
     def learn(self):
         for learn_idx in range(self.num_learning_iterations):
@@ -107,55 +114,53 @@ class Learner:
             # Optimizers for critic and actor
 
             # TODO: Implement true batch learning.
-            for batch_idx in range(self.episode_batch_size):
-                # Sample a random trajectory from the replay buffer
-                states, rewards, actions, log_probs = self.get_batch()
-                num_steps = states.shape[0]
+            # Sample a random trajectory from the replay buffer
+            states, actions, log_probs, rewards = self.get_batch(self.episode_batch_size)
 
-                # Train actor.
-                self.actor.train()
-                self.critic.eval()
-                self.actor_opt.zero_grad()
-                task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
+            # Train actor.
+            self.actor.train()
+            self.critic.eval()
+            self.actor_opt.zero_grad()
+            task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
 
-                task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
-                actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
-                actor_loss.backward()
-                nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
-                self.actor_opt.step()
+            task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
+            actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
+            actor_loss.backward()
+            nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
+            self.actor_opt.step()
 
-                # Train critic.
-                self.critic.train()
-                self.actor.eval()
-                self.critic_opt.zero_grad()
+            # Train critic.
+            self.critic.train()
+            self.actor.eval()
+            self.critic_opt.zero_grad()
 
-                critic_input = self.get_critic_input(actions, states)
-                state_trajectory_action_values = self.critic(critic_input)
-                target_state_trajectory_action_values = self.target_critic(critic_input)
-                # TODO: Implement sampling for calculating expectation.
-                target_task_actions, _ = self.target_actor.predict(states)
-                target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
-                _, target_log_trajectory_task_action_probs = self.target_actor.predict(
-                    states,
-                    action=self.expand_actions(actions)
-                )
-                start = time.time()
-                critic_loss = self.critic_criterion(state_trajectory_action_values,
-                                                    target_state_trajectory_action_values.detach(),
-                                                    target_expected_state_values.detach(),
-                                                    rewards,
-                                                    log_probs,
-                                                    target_log_trajectory_task_action_probs.detach())
-                critic_loss.backward()
-                print(time.time() - start)
-                nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
-                self.critic_opt.step()
+            critic_input = self.get_critic_input(actions, states)
+            state_trajectory_action_values = self.critic(critic_input)
+            target_state_trajectory_action_values = self.target_critic(critic_input)
+            # TODO: Implement sampling for calculating expectation.
+            target_task_actions, _ = self.target_actor.predict(states)
+            target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
+            _, target_log_trajectory_task_action_probs = self.target_actor.predict(
+                states,
+                action=self.expand_actions(actions)
+            )
+            start = time.time()
+            critic_loss = self.critic_criterion(state_trajectory_action_values,
+                                                target_state_trajectory_action_values.detach(),
+                                                target_expected_state_values.detach(),
+                                                rewards,
+                                                log_probs,
+                                                target_log_trajectory_task_action_probs.detach())
+            critic_loss.backward()
+            print(time.time() - start)
+            nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
+            self.critic_opt.step()
 
-                # Write to log.
-                if self.writer:
-                    self.writer.add_scalar('train/loss/actor', actor_loss, self.step_counter)
-                    self.writer.add_scalar('train/loss/critic', critic_loss, self.step_counter)
-                self.step_counter += 1
+            # Write to log.
+            if self.writer:
+                self.writer.add_scalar('train/loss/actor', actor_loss, self.step_counter)
+                self.writer.add_scalar('train/loss/critic', critic_loss, self.step_counter)
+            self.step_counter += 1
         self.update_targets()
 
 

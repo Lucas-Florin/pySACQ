@@ -81,10 +81,10 @@ class ContinuousCritic(SQXNet):
                                                use_gpu)
 
     def forward(self, x, task=None):
-        if task is not None or x.dim() == 2:
+        if task is not None or x.dim() == 3:
             return super().forward(x, task)
-        elif x.dim() == 3:
-            assert x.dim() == 3
+        elif x.dim() == 4:
+            assert x.dim() == 4
             assert x.shape[-2] == self.num_intentions
             x_list = list()
             for i in range(self.num_intentions):
