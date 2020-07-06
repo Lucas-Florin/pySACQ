@@ -36,10 +36,7 @@ class RetraceLossRecursive(nn.Module):
             importance_weights = self.remove_first_timestep(torch.exp(torch.clamp(log_importance_weights, max=0)))
             retrace_state_action_values = torch.zeros_like(state_trajectory_action_values)
 
-            retrace_state_action_values[:, -1, :] = (
-                    rewards[:, -1, :]
-                    + self.gamma * (target_expected_state_values[:, -1, :]
-                                    + importance_weights[:, -1, :] * target_state_trajectory_action_values[:, -1, :]))
+            retrace_state_action_values[:, -1, :] = target_state_trajectory_action_values[:, -1, :].detach()
             for j in range(num_steps - 2, -1, -1):
                 retrace_state_action_values[:, j, :] = (
                         rewards[:, j, :]
