@@ -27,10 +27,10 @@ class LunarLanderTrainer(BaseTrainer):
         return non_linear
 
     def get_actor(self):
-        return DiscreteActor(use_gpu=self.use_gpu, non_linear=self.non_linear, batch_norm=self.args.batch_norm)
+        return DiscreteActor(use_gpu=self.use_gpu)
 
     def get_critic(self):
-        return DiscreteCritic(use_gpu=self.use_gpu, non_linear=self.non_linear, batch_norm=self.args.batch_norm)
+        return DiscreteCritic(use_gpu=self.use_gpu)
 
     def get_sampler(self):
         return Sampler(self.actor, self.env, self.task, self.replay_buffer,

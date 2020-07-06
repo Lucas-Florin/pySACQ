@@ -186,6 +186,7 @@ class BaseTrainer:
         epoch_tic = time.clock()
         num_steps = 0
         reward = 0
+        rewards = list()
         while not done:
             step_tic = time.clock()
             if render:
@@ -194,12 +195,13 @@ class BaseTrainer:
             self.actor.eval()
             obs = torch.tensor(obs, dtype=torch.float)
             obs = obs.cuda() if self.use_gpu else obs
-            action, _ = self.actor.predict(obs, task=-1)  # Last intention is main task
+            action, _ = self.actor.predict(obs, task=-1, noise=False)  # Last intention is main task
             # Step the environment and push outputs to policy
-            gym_action = action.cpu().squeeze()
+            gym_action = action.detach().cpu().squeeze()
             if self.continuous and gym_action.dim() == 0:
                 gym_action = gym_action.unsqueeze(0)
             obs, reward, done, _ = self.env.step(gym_action)
+            rewards.append(reward)
             if self.writer:
                 self.writer.add_scalar('test/reward', reward, self.test_step)
             step_toc = time.clock()
@@ -213,7 +215,7 @@ class BaseTrainer:
         # Total elapsed time in epoch
         epoch_toc = time.clock()
         epoch_time = epoch_toc - epoch_tic
-        print('Episode complete (%s steps in %.2fsec), final reward %s ' % (num_steps, epoch_time, reward))
+        print('Episode complete (%s steps in %.2fsec), final reward %s ' % (num_steps, epoch_time, np.mean(rewards)))
 
 
 if __name__ == '__main__':

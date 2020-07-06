@@ -17,7 +17,7 @@ class ContinuousActor(SQXNet):
                  action_dim=1,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadActor,
-                 batch_norm=False,
+                 layer_norm=True,
                  use_gpu=True):
         super(ContinuousActor, self).__init__(state_dim=state_dim,
                                               base_hidden_size=base_hidden_size,
@@ -27,19 +27,19 @@ class ContinuousActor(SQXNet):
                                               head_output_size=action_dim * 2,
                                               non_linear=non_linear,
                                               intention_net_type=net_type,
-                                              batch_norm=batch_norm,
+                                              layer_norm=layer_norm,
                                               use_gpu=use_gpu)
         self.logits = nn.Tanh()
         self.action_dim = action_dim
 
-    def predict(self, x, task=None, action=None, sampling_batch=None, requires_grad=False):
+    def predict(self, x, task=None, action=None, sampling_batch=None, requires_grad=False, noise=True):
         x = self(x, task)
         x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
         # Intention head determines parameters of Categorical distribution
         means = x.narrow(-1, 0, self.action_dim) * 2
         # TODO: Scale standard deviation
-        standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) / 2 + 0.5) * 0.3 + 0.1
+        standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) / 2 + 0.5) * 0.9 + 0.1
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
         if action is None:
@@ -50,6 +50,8 @@ class ContinuousActor(SQXNet):
                 action = dist.sample()
             else:
                 action = dist.sample([sampling_batch])
+        if not noise:
+            action[:] = means
         log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob
 
@@ -66,7 +68,7 @@ class ContinuousCritic(SQXNet):
                  head_output_size=1,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadCritic,
-                 batch_norm=False,
+                 layer_norm=True,
                  use_gpu=True):
         super(ContinuousCritic, self).__init__(state_dim,
                                                base_hidden_size,
@@ -76,7 +78,7 @@ class ContinuousCritic(SQXNet):
                                                head_output_size,
                                                non_linear,
                                                net_type,
-                                               batch_norm,
+                                               layer_norm,
                                                use_gpu)
 
     def forward(self, x, task=None):

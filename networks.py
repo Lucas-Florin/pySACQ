@@ -72,11 +72,11 @@ class SQXNet(torch.nn.Module):
                  head_output_size,
                  non_linear,
                  intention_net_type,
-                 batch_norm=False,
+                 layer_norm=True,
                  use_gpu=True):
         super(SQXNet, self).__init__()
         self.non_linear = non_linear
-        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
         self.use_gpu = use_gpu
         self.num_intentions = num_intentions
         self.state_dim = state_dim
@@ -84,8 +84,8 @@ class SQXNet(torch.nn.Module):
         # Build the base of the network
         self.layer1 = nn.Linear(state_dim, base_hidden_size)
         self.layer2 = nn.Linear(base_hidden_size, head_input_size)
-        if self.batch_norm:
-            self.bn1 = nn.LayerNorm(base_hidden_size)
+        if self.layer_norm:
+            self.ln1 = nn.LayerNorm(base_hidden_size)
         self.init_weights()
 
         # Create the many intention nets heads
@@ -111,8 +111,8 @@ class SQXNet(torch.nn.Module):
         # Feed the input through the base layers of the model
         x = self.layer1(x)
         x = self.non_linear(x)
-        if self.batch_norm:
-            x = self.bn1(x)
+        if self.layer_norm:
+            x = self.ln1(x)
         x = self.non_linear(self.layer2(x))
         if task is not None:  # single intention head
             x = self.intention_nets[task](x)
@@ -136,7 +136,7 @@ class DiscreteActor(SQXNet):
                  head_output_size=4,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadActor,
-                 batch_norm=False,
+                 layer_norm=False,
                  use_gpu=True):
         super(DiscreteActor, self).__init__(state_dim,
                                             base_hidden_size,
@@ -146,7 +146,7 @@ class DiscreteActor(SQXNet):
                                             head_output_size,
                                             non_linear,
                                             net_type,
-                                            batch_norm,
+                                            layer_norm,
                                             use_gpu)
         self.logits = nn.Softmax(dim=-1)
 
@@ -175,7 +175,7 @@ class DiscreteCritic(SQXNet):
                  head_output_size=1,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadCritic,
-                 batch_norm=False,
+                 layer_norm=False,
                  use_gpu=True):
         super(DiscreteCritic, self).__init__(state_dim,
                                              base_hidden_size,
@@ -185,7 +185,7 @@ class DiscreteCritic(SQXNet):
                                              head_output_size,
                                              non_linear,
                                              net_type,
-                                             batch_norm,
+                                             layer_norm,
                                              use_gpu)
 
     def forward(self, x, task=None):
