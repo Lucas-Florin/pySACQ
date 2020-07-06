@@ -3,7 +3,7 @@
 # =========== #
 local/logs/*
 local/models/*
-local/*
+#local/*
 !local/template.sh
 
 # =========== #
