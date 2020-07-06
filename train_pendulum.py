@@ -4,6 +4,7 @@ import torch
 # Add local files to path
 from train import BaseTrainer
 from networks_continuous import ContinuousActor, ContinuousCritic
+from off_policy_learner import OffPolicyLearner
 from actor_critic_networks import Actor, Critic
 from tasks import NoneScheduler
 from learner import Learner
@@ -45,12 +46,41 @@ class PendulumTrainer(BaseTrainer):
                        )
 
     def get_learner(self):
-        return Learner(self.actor, self.critic, self.task, self.replay_buffer,
-                       num_learning_iterations=self.args.num_learning_iterations,
-                       episode_batch_size=self.args.episode_batch_size,
-                       use_gpu=self.use_gpu,
-                       continuous=True,
-                       writer=self.writer)
+        TRAJECTORY_LENGTH = 200
+        NUM_EVAL_TRAJECTORIES = 10
+        NUM_TRAJECTORIES = 500
+        BATCH_SIZE = 128
+        NUM_TRAJECTORIES = 20
+        BATCH_SIZE = 20
+        UPDATE_TARGNETS_EVERY = 10
+        NUM_TRAINING_ITERATIONS = 40
+        TOTAL_TIMESTEPS = 1000
+        ACTOR_LEARNING_RATE = 2e-4
+        CRITIC_LEARNING_RATE = 2e-4
+        GRADIENT_CLIPPING_VALUE = None
+        NUM_EXPECTATION_SAMPLES = 1
+        ENTROPY_REGULARIZATION_ON = False
+        ENTROPY_REGULARIZATION = 1e-5
+        ACTION_STD_LOW = 1e-1
+        ACTION_STD_HIGH = 1
+        ACTION_MEAN_SCALE = 2
+        ACTION_BOUNDS = (-2, 2)
+        REPLAY_BUFFER_SIZE = 10000
+        LOG_EVERY = 10
+        SAVE_MODEL_EVERY = 10
+        return OffPolicyLearner(actor=self.actor,
+                               critic=self.critic,
+                               trajectory_length=TRAJECTORY_LENGTH,
+                               actor_lr=ACTOR_LEARNING_RATE,
+                               critic_lr=CRITIC_LEARNING_RATE,
+                               expectation_samples=NUM_EXPECTATION_SAMPLES,
+                               entropy_regularization_on=ENTROPY_REGULARIZATION_ON,
+                               entropy_regularization=ENTROPY_REGULARIZATION,
+                               gradient_clip_val=GRADIENT_CLIPPING_VALUE,
+                               update_targnets_every=UPDATE_TARGNETS_EVERY,
+                               num_training_iter=NUM_TRAINING_ITERATIONS,
+                               minibatch_size=BATCH_SIZE,
+                               logger=self.writer)
 
     @staticmethod
     def define_args():

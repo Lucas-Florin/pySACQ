@@ -86,7 +86,7 @@ class Sampler:
             log_probs = torch.stack(log_probs).float()
             rewards = torch.stack(rewards).float()
             trajectory = Trajectory(observations, actions, log_probs, rewards)
-            self.replay_buffer.append(trajectory)
+            self.replay_buffer.push(observations, actions.detach(), rewards, log_probs.detach())
 
 
 

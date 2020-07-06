@@ -5,15 +5,14 @@ import torch.nn.functional as F
 class Retrace(torch.nn.Module):
     def __init__(self):
         super(Retrace, self).__init__()
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     def forward(self,
                 Q,
-                target_Q,
                 expected_target_Q,
+                target_Q,
                 rewards,
-                behaviour_policy_probs,
                 target_policy_probs,
+                behaviour_policy_probs,
                 gamma=0.99,
                 recursive=True):
         """
@@ -48,12 +47,12 @@ class Retrace(torch.nn.Module):
         """
 
         if recursive:
-            return self.retrace(Q=Q.squeeze(-1),
-                                expected_target_Q=expected_target_Q.squeeze(-1),
-                                target_Q=target_Q.squeeze(-1),
-                                rewards=rewards.squeeze(-1),
-                                target_policy_probs=target_policy_probs.squeeze(-1),
-                                behaviour_policy_probs=behaviour_policy_probs.squeeze(-1),
+            return self.retrace(Q=Q,
+                                expected_target_Q=expected_target_Q,
+                                target_Q=target_Q,
+                                rewards=rewards,
+                                target_policy_probs=target_policy_probs,
+                                behaviour_policy_probs=behaviour_policy_probs,
                                 gamma=gamma)
 
         else:
@@ -100,7 +99,7 @@ class Retrace(torch.nn.Module):
             expected_Q_next_t = expected_target_Q[:, 1:]
             c_next_t = self.calc_retrace_weights(target_policy_probs, behaviour_policy_probs)[:, 1:]
 
-            Q_ret = torch.zeros_like(Q_t, device=self.device, dtype=torch.float)  # (B,T)
+            Q_ret = torch.zeros_like(Q_t, dtype=torch.float)  # (B,T)
             Q_ret[:, -1] = Q[:, -1]
 
             for t in reversed(range(1, T - 1)):
@@ -215,14 +214,7 @@ class Retrace(torch.nn.Module):
             "Error, shape mismatch. Shapes: target_policy_probs: " \
             + str(target_policy_probs.shape) + " mean: " + str(behaviour_policy_probs.shape)
 
-        if target_policy_probs.dim() > 2:
-            retrace_weights = (torch.prod(target_policy_probs, dim=-1) / torch.prod(behaviour_policy_probs, dim=-1)).clamp(min=1e-10, max=1)
-        else:
-            retrace_weights = (target_policy_probs / behaviour_policy_probs).clamp(min=1e-10, max=1)
-
-        assert not torch.isnan(retrace_weights).any(), "Error, a least one NaN value found in retrace weights."
-        return retrace_weights
-
+        return (target_policy_probs / behaviour_policy_probs).clamp(min=1e-10, max=1)
 
     # def retrace_recursiveOLD(self,
     #                          Q,
