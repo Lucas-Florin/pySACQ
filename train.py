@@ -10,6 +10,8 @@ import torch
 import numpy as np
 from tensorboardX import SummaryWriter
 
+from replay_buffer import ReplayBuffer
+
 # Add local files to path
 root_dir = Path.cwd()
 sys.path.append(str(root_dir))
@@ -24,7 +26,7 @@ class BaseTrainer:
         self.use_gpu = self.check_gpu()
 
         # Replay buffer stores collected trajectories
-        self.replay_buffer = deque(maxlen=self.args.buffer_size)
+        self.replay_buffer = ReplayBuffer(10000)
 
         # Environment is the lunar lander from OpenAI gym
 
@@ -119,7 +121,7 @@ class BaseTrainer:
         for i in range(self.args.num_train_cycles):
             print('Training cycle %s of %s' % (i, self.args.num_train_cycles))
             self.sampler.sample()
-            self.learner.learn()
+            self.learner.learn(self.replay_buffer)
             for _ in range(5):
                 self.run()
             if (i+1) % self.args.save_freq == 0:
@@ -204,6 +206,7 @@ class BaseTrainer:
             obs = obs.cuda() if self.use_gpu else obs
             mean, std = self.actor(obs)
             action, log_prob = self.actor.action_sample(mean, std)
+            action = mean
             # Step the environment and push outputs to policy
             gym_action = action.detach().cpu().squeeze()
             if self.continuous and gym_action.dim() == 0:
