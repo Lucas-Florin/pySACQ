@@ -19,7 +19,7 @@ class TaskHeadBase(torch.nn.Module):
         # Build the network
         self.layer1 = nn.Linear(input_size, hidden_size)
         self.final_layer = nn.Linear(hidden_size, output_size)
-        self.init_weights()
+        #self.init_weights()
 
     def init_weights(self):
         # Initialize the other layers with xavier (still constant 0 bias)
@@ -86,7 +86,7 @@ class SQXNet(torch.nn.Module):
         self.layer2 = nn.Linear(base_hidden_size, head_input_size)
         if self.layer_norm:
             self.ln1 = nn.LayerNorm(base_hidden_size)
-        self.init_weights()
+        #self.init_weights()
 
         # Create the many intention nets heads
 
