@@ -55,11 +55,12 @@ class Sampler:
                 if num_steps % self.task_period == 0:
                     self.task_scheduler.sample()
                 # Get the action from current actor policy
-                obs = torch.tensor(obs, dtype=torch.float).unsqueeze(dim=0)
+                obs = torch.tensor(obs, dtype=torch.float)
                 obs = obs.cuda() if self.use_gpu else obs
-                action, log_prob = self.actor.predict(obs, task=self.task_scheduler.current_task)
+                mean, std = self.actor(obs)
+                action, log_prob = self.actor.action_sample(mean, std)
                 # Execute action and collect rewards for each task
-                gym_action = action.cpu().squeeze()
+                gym_action = action.cpu().squeeze().detach()
                 if self.continuous and gym_action.dim() == 0:
                     gym_action = gym_action.unsqueeze(0)
                 gym_reward = list()
@@ -81,8 +82,8 @@ class Sampler:
                 self.step_counter += 1
             # Add trajectory to replay buffer
             observations = torch.stack(observations).float()
-            actions = torch.cat(actions).float()
-            log_probs = torch.cat(log_probs).float()
+            actions = torch.stack(actions).float()
+            log_probs = torch.stack(log_probs).float()
             rewards = torch.stack(rewards).float()
             trajectory = Trajectory(observations, actions, log_probs, rewards)
             self.replay_buffer.append(trajectory)

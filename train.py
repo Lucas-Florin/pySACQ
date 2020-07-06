@@ -66,19 +66,20 @@ class BaseTrainer:
             self.train()
 
             # Save the model to local directory
-            if self.args.saveas is not None:
-                self.save()
+            self.save()
 
         # Close writer
         if self.writer is not None:
             self.writer.close()
 
-    def save(self):
+    def save(self, i=''):
+        if self.args.saveas is None:
+            return
         save_path = str(root_dir / 'local' / 'models' / self.args.saveas)
         Path(str(root_dir / 'local' / 'models/')).mkdir(parents=True, exist_ok=True)
         print('Saving models to %s' % save_path)
-        torch.save(self.actor, save_path + '_actor.pt')
-        torch.save(self.critic, save_path + '_critic.pt')
+        torch.save(self.actor, save_path + i + '_actor.pt')
+        torch.save(self.critic, save_path + i + '_critic.pt')
         print('...done')
 
     def init_task_scheduler(self):
@@ -122,7 +123,7 @@ class BaseTrainer:
             for _ in range(5):
                 self.run()
             if (i+1) % self.args.save_freq == 0:
-                self.save()
+                self.save('_' + str(i))
 
     def check_gpu(self):
         # Make sure we can use gpu
@@ -173,7 +174,7 @@ class BaseTrainer:
                             help='Number of trajectories per batch (gradient push) [default: 2]')
         parser.add_argument('--buffer_size', type=int, default=200,
                             help='Number of trajectories in replay buffer [default: 200]')
-        parser.add_argument('--save-freq', type=int, default=10,
+        parser.add_argument('--save-freq', type=int, default=1,
                             help='Save frequency')
 
         return parser
@@ -201,7 +202,8 @@ class BaseTrainer:
             self.actor.eval()
             obs = torch.tensor(obs, dtype=torch.float)
             obs = obs.cuda() if self.use_gpu else obs
-            action, _ = self.actor.predict(obs, task=-1, noise=False)  # Last intention is main task
+            mean, std = self.actor(obs)
+            action, log_prob = self.actor.action_sample(mean, std)
             # Step the environment and push outputs to policy
             gym_action = action.detach().cpu().squeeze()
             if self.continuous and gym_action.dim() == 0:

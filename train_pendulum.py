@@ -4,6 +4,7 @@ import torch
 # Add local files to path
 from train import BaseTrainer
 from networks_continuous import ContinuousActor, ContinuousCritic
+from actor_critic_networks import Actor, Critic
 from tasks import NoneScheduler
 from learner import Learner
 from sampler import Sampler
@@ -23,10 +24,15 @@ class PendulumTrainer(BaseTrainer):
         return non_linear
 
     def get_actor(self):
-        return ContinuousActor(use_gpu=self.use_gpu)
+        return Actor(num_actions=1,
+                  num_obs=3,
+                  mean_scale=2,
+                  std_low=0.1,
+                  std_high=1,
+                  action_bound=(-2,2))
 
     def get_critic(self):
-        return ContinuousCritic(use_gpu=self.use_gpu)
+        return Critic(num_actions=1, num_obs=3)
 
     def get_sampler(self):
         return Sampler(self.actor, self.env, self.task, self.replay_buffer,

@@ -43,15 +43,16 @@ class ContinuousActor(SQXNet):
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
         if action is None:
-            if requires_grad:
+            if not noise:
+                action = means
+            elif requires_grad:
                 assert sampling_batch is None
                 action = aux_dist.sample() * standard_deviations + means
             elif sampling_batch is None:
                 action = dist.sample()
             else:
                 action = dist.sample([sampling_batch])
-        if not noise:
-            action = means
+
         log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob
 

@@ -37,7 +37,7 @@ class Learner:
         self.episode_batch_size = episode_batch_size
         self.lr = lr
         self.writer = writer
-        self.num_intentions = self.actor.num_intentions
+        self.num_intentions = None
         self.expectation_sample_size = expectation_sample_size
 
         self.use_gpu = use_gpu
@@ -50,7 +50,7 @@ class Learner:
 
         # TODO: Specify alpha and gamma parameters.
         self.actor_criterion = ActorLoss()
-        self.critic_criterion = RetraceLossRecursive(use_gpu=use_gpu)
+        self.critic_criterion = Retrace()
 
         self.target_actor = copy.deepcopy(self.actor)
         self.target_critic = copy.deepcopy(self.critic)
@@ -122,9 +122,10 @@ class Learner:
                 self.actor.train()
                 self.critic.eval()
                 self.actor_opt.zero_grad()
-                task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
+                mean, std = self.actor(states)
+                task_actions, task_log_probs = self.actor.action_sample(mean, std)
 
-                task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
+                task_state_action_values = self.critic(task_actions, states)
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
                 actor_loss.backward()
                 #nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
@@ -136,16 +137,14 @@ class Learner:
                 self.critic_opt.zero_grad()
 
                 critic_input = self.get_critic_input(actions, states)
-                state_trajectory_action_values = self.critic(critic_input)
-                with torch.no_grad():
-                    target_state_trajectory_action_values = self.target_critic(critic_input)
-                    # TODO: Implement sampling for calculating expectation.
-                    target_task_actions, _ = self.target_actor.predict(states)
-                    target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
-                    _, target_log_trajectory_task_action_probs = self.target_actor.predict(
-                        states,
-                        action=self.expand_actions(actions)
-                    )
+                state_trajectory_action_values = self.critic(actions, states)
+                target_state_trajectory_action_values = self.target_critic(actions, states)
+                # TODO: Implement sampling for calculating expectation.
+                mean, std = self.target_actor.forward(states)
+                target_task_actions, _ = self.target_actor.action_sample(mean, std)
+                target_expected_state_values = self.target_critic(target_task_actions, states)
+                target_log_trajectory_task_action_probs = self.target_actor.get_log_prob(actions, mean, std
+                )
                 critic_loss = self.critic_criterion(state_trajectory_action_values,
                                                     target_state_trajectory_action_values.detach(),
                                                     target_expected_state_values.detach(),
