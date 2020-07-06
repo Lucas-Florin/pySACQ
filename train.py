@@ -45,6 +45,7 @@ class BaseTrainer:
         self.test_step = 0
 
         if self.args.model:  # TEST MODE
+            self.use_gpu = False
             self.actor, self.critic = self.load_models()
             self.evaluate()
 
@@ -104,8 +105,8 @@ class BaseTrainer:
     def load_models(self):
         model_path = str(root_dir / 'local' / 'models' / self.args.model)
         print('Loading models from %s' % model_path)
-        actor = torch.load(model_path + '_actor.pt')
-        critic = torch.load(model_path + '_critic.pt')
+        actor = torch.load(model_path + '_actor.pt', map_location=torch.device('cpu'))
+        critic = torch.load(model_path + '_critic.pt', map_location=torch.device('cpu'))
         print('...done')
         return actor, critic
 
@@ -215,7 +216,7 @@ class BaseTrainer:
         # Total elapsed time in epoch
         epoch_toc = time.clock()
         epoch_time = epoch_toc - epoch_tic
-        print('Episode complete (%s steps in %.2fsec), final reward %s ' % (num_steps, epoch_time, np.mean(rewards)))
+        print('Evaluation mean reward %s ' % (np.mean(rewards)))
 
 
 if __name__ == '__main__':
