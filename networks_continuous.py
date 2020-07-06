@@ -51,7 +51,7 @@ class ContinuousActor(SQXNet):
             else:
                 action = dist.sample([sampling_batch])
         if not noise:
-            action[:] = means
+            action = means
         log_prob = dist.log_prob(action).sum(-1)
         return action, log_prob
 

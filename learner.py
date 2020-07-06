@@ -10,6 +10,7 @@ import torch.nn as nn
 # Import losses
 from losses.retrace_loss_recursive import RetraceLossRecursive
 from losses.retrace_loss_recursive_fast import RetraceLossRecursiveFast
+from losses.retrace_loss import Retrace
 from losses.actor_loss import ActorLoss
 
 
@@ -110,56 +111,57 @@ class Learner:
     def learn(self):
         print("Training networks...")
         for learn_idx in range(self.num_learning_iterations):
-            # print('Learning: trajectory %s of %s' % (learn_idx + 1, num_learning_iterations))
-            # Optimizers for critic and actor
+            for _ in range(10):
+                # print('Learning: trajectory %s of %s' % (learn_idx + 1, num_learning_iterations))
+                # Optimizers for critic and actor
 
-            # Sample a random batch of trajectories from the replay buffer
-            states, actions, log_probs, rewards = self.get_batch(self.episode_batch_size)
+                # Sample a random batch of trajectories from the replay buffer
+                states, actions, log_probs, rewards = self.get_batch(self.episode_batch_size)
 
-            # Train actor.
-            self.actor.train()
-            self.critic.eval()
-            self.actor_opt.zero_grad()
-            task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
+                # Train actor.
+                self.actor.train()
+                self.critic.eval()
+                self.actor_opt.zero_grad()
+                task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
 
-            task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
-            actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
-            actor_loss.backward()
-            nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
-            self.actor_opt.step()
+                task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
+                actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
+                actor_loss.backward()
+                #nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
+                self.actor_opt.step()
 
-            # Train critic.
-            self.critic.train()
-            self.actor.eval()
-            self.critic_opt.zero_grad()
+                # Train critic.
+                self.critic.train()
+                self.actor.eval()
+                self.critic_opt.zero_grad()
 
-            critic_input = self.get_critic_input(actions, states)
-            state_trajectory_action_values = self.critic(critic_input)
-            with torch.no_grad():
-                target_state_trajectory_action_values = self.target_critic(critic_input)
-                # TODO: Implement sampling for calculating expectation.
-                target_task_actions, _ = self.target_actor.predict(states)
-                target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
-                _, target_log_trajectory_task_action_probs = self.target_actor.predict(
-                    states,
-                    action=self.expand_actions(actions)
-                )
-            critic_loss = self.critic_criterion(state_trajectory_action_values,
-                                                target_state_trajectory_action_values.detach(),
-                                                target_expected_state_values.detach(),
-                                                rewards,
-                                                log_probs,
-                                                target_log_trajectory_task_action_probs.detach())
-            critic_loss.backward()
-            nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
-            self.critic_opt.step()
+                critic_input = self.get_critic_input(actions, states)
+                state_trajectory_action_values = self.critic(critic_input)
+                with torch.no_grad():
+                    target_state_trajectory_action_values = self.target_critic(critic_input)
+                    # TODO: Implement sampling for calculating expectation.
+                    target_task_actions, _ = self.target_actor.predict(states)
+                    target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
+                    _, target_log_trajectory_task_action_probs = self.target_actor.predict(
+                        states,
+                        action=self.expand_actions(actions)
+                    )
+                critic_loss = self.critic_criterion(state_trajectory_action_values,
+                                                    target_state_trajectory_action_values.detach(),
+                                                    target_expected_state_values.detach(),
+                                                    rewards,
+                                                    log_probs,
+                                                    target_log_trajectory_task_action_probs.detach())
+                critic_loss.backward()
+                #nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
+                self.critic_opt.step()
 
-            # Write to log.
-            if self.writer:
-                self.writer.add_scalar('train/loss/actor', actor_loss, self.step_counter)
-                self.writer.add_scalar('train/loss/critic', critic_loss, self.step_counter)
-            self.step_counter += 1
-        self.update_targets()
+                # Write to log.
+                if self.writer:
+                    self.writer.add_scalar('train/loss/actor', actor_loss, self.step_counter)
+                    self.writer.add_scalar('train/loss/critic', critic_loss, self.step_counter)
+                self.step_counter += 1
+            self.update_targets()
 
 
 

@@ -119,7 +119,10 @@ class BaseTrainer:
             print('Training cycle %s of %s' % (i, self.args.num_train_cycles))
             self.sampler.sample()
             self.learner.learn()
-            self.run()
+            for _ in range(5):
+                self.run()
+            if (i+1) % self.args.save_freq == 0:
+                self.save()
 
     def check_gpu(self):
         # Make sure we can use gpu
@@ -170,6 +173,8 @@ class BaseTrainer:
                             help='Number of trajectories per batch (gradient push) [default: 2]')
         parser.add_argument('--buffer_size', type=int, default=200,
                             help='Number of trajectories in replay buffer [default: 200]')
+        parser.add_argument('--save-freq', type=int, default=10,
+                            help='Save frequency')
 
         return parser
 
