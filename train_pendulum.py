@@ -8,7 +8,7 @@ from off_policy_learner import OffPolicyLearner
 from actor_critic_networks import Actor, Critic
 from tasks import NoneScheduler
 from learner import Learner
-from sampler import Sampler
+from sampler_denis import Sampler
 
 
 class PendulumTrainer(BaseTrainer):
@@ -36,14 +36,12 @@ class PendulumTrainer(BaseTrainer):
         return Critic(num_actions=1, num_obs=3)
 
     def get_sampler(self):
-        return Sampler(self.actor, self.env, self.task, self.replay_buffer,
-                       num_trajectories=self.args.num_trajectories,
-                       task_period=30,
-                       use_gpu=self.use_gpu,
-                       continuous=True,
-                       reward_scaling_factor=1 / 10,
-                       writer=self.writer
-                       )
+        return Sampler(env=self.env,
+                      num_trajectories=20,
+                      actor_network=self.actor,
+                      replay_buffer=self.replay_buffer,
+                      render=False,
+                      logger=None)
 
     def get_learner(self):
         TRAJECTORY_LENGTH = 200
@@ -51,7 +49,7 @@ class PendulumTrainer(BaseTrainer):
         NUM_TRAJECTORIES = 500
         BATCH_SIZE = 128
         NUM_TRAJECTORIES = 20
-        BATCH_SIZE = 20
+        BATCH_SIZE = 1
         UPDATE_TARGNETS_EVERY = 10
         NUM_TRAINING_ITERATIONS = 40
         TOTAL_TIMESTEPS = 1000
@@ -80,7 +78,7 @@ class PendulumTrainer(BaseTrainer):
                                update_targnets_every=UPDATE_TARGNETS_EVERY,
                                num_training_iter=NUM_TRAINING_ITERATIONS,
                                minibatch_size=BATCH_SIZE,
-                               logger=self.writer)
+                               logger=None)
 
     @staticmethod
     def define_args():
