@@ -134,14 +134,15 @@ class Learner:
 
             critic_input = self.get_critic_input(actions, states)
             state_trajectory_action_values = self.critic(critic_input)
-            target_state_trajectory_action_values = self.target_critic(critic_input)
-            # TODO: Implement sampling for calculating expectation.
-            target_task_actions, _ = self.target_actor.predict(states)
-            target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
-            _, target_log_trajectory_task_action_probs = self.target_actor.predict(
-                states,
-                action=self.expand_actions(actions)
-            )
+            with torch.no_grad():
+                target_state_trajectory_action_values = self.target_critic(critic_input)
+                # TODO: Implement sampling for calculating expectation.
+                target_task_actions, _ = self.target_actor.predict(states)
+                target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
+                _, target_log_trajectory_task_action_probs = self.target_actor.predict(
+                    states,
+                    action=self.expand_actions(actions)
+                )
             critic_loss = self.critic_criterion(state_trajectory_action_values,
                                                 target_state_trajectory_action_values.detach(),
                                                 target_expected_state_values.detach(),
