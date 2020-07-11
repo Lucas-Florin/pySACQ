@@ -72,7 +72,7 @@ class SQXNet(torch.nn.Module):
                  head_output_size,
                  non_linear,
                  intention_net_type,
-                 layer_norm=True,
+                 layer_norm=False,
                  use_gpu=True):
         super(SQXNet, self).__init__()
         self.non_linear = non_linear
