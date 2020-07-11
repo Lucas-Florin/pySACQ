@@ -19,7 +19,6 @@ class Learner:
     def __init__(self,
                  actor: nn.Module,
                  critic: nn.Module,
-                 task_scheduler,
                  replay_buffer: list,
                  num_learning_iterations=10,
                  episode_batch_size=32,
@@ -31,7 +30,6 @@ class Learner:
 
         self.actor = actor
         self.critic = critic
-        self.task_scheduler = task_scheduler
         self.replay_buffer = replay_buffer
         self.num_learning_iterations = num_learning_iterations
         self.episode_batch_size = episode_batch_size

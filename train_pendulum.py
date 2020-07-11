@@ -39,7 +39,7 @@ class PendulumTrainer(BaseTrainer):
                        )
 
     def get_learner(self):
-        return Learner(self.actor, self.critic, self.task, self.replay_buffer,
+        return Learner(self.actor, self.critic, self.replay_buffer,
                        num_learning_iterations=self.args.num_learning_iterations,
                        episode_batch_size=self.args.episode_batch_size,
                        use_gpu=self.use_gpu,
