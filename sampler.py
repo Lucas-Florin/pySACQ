@@ -64,23 +64,24 @@ class Sampler:
                     gym_action = gym_action.unsqueeze(0)
                 gym_reward = list()
                 for _ in range(self.skip_steps):
-                    obs, r, done, _ = self.env.step(gym_action)
+                    obs_new, r, done, _ = self.env.step(gym_action)
                     gym_reward.append(r)
                 # Modify the main task reward (the huge -100 and 100 values cause instability)
                 # Reward is a vector of the reward for each task
-                reward = self.task_scheduler.reward(obs, np.mean(gym_reward) * self.reward_scaling_factor)
+                reward = self.task_scheduler.reward(obs_new, np.mean(gym_reward) * self.reward_scaling_factor)
                 if self.writer:
                     for i, r in enumerate(reward):
                         self.writer.add_scalar('train/reward/%s' % i, r, self.step_counter)
                 # group information into a step and add to current trajectory
-                observations.append(torch.tensor(obs))
+                observations.append(obs.detach())
                 actions.append(action.detach())
                 log_probs.append(log_prob.detach())
                 rewards.append(torch.tensor(reward))
                 num_steps += 1
                 self.step_counter += 1
+                obs = obs_new
             # Add trajectory to replay buffer
-            observations = torch.stack(observations).float()
+            observations = torch.cat(observations).float()
             actions = torch.cat(actions).float()
             log_probs = torch.cat(log_probs).float()
             rewards = torch.stack(rewards).float()
