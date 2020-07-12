@@ -17,7 +17,7 @@ class ContinuousActor(SQXNet):
                  action_dim=1,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadActor,
-                 layer_norm=False,
+                 layer_norm=True,
                  use_gpu=True):
         super(ContinuousActor, self).__init__(state_dim=state_dim,
                                               base_hidden_size=base_hidden_size,
@@ -68,7 +68,7 @@ class ContinuousCritic(SQXNet):
                  head_output_size=1,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadCritic,
-                 layer_norm=False,
+                 layer_norm=True,
                  use_gpu=True):
         super(ContinuousCritic, self).__init__(state_dim,
                                                base_hidden_size,

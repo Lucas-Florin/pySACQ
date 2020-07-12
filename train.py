@@ -44,21 +44,22 @@ class BaseTrainer:
 
         self.test_step = 0
 
+        # Non-linearity is an argument
+        self.non_linear = self.get_nonlinear()
+
+        # Actor and Critic networks
+        actor = self.get_actor()
+        critic = self.get_critic()
+        self.actor = actor.cuda() if self.use_gpu else actor
+        self.critic = critic.cuda() if self.use_gpu else critic
+
         if self.args.model:  # TEST MODE
             self.use_gpu = False
-            self.actor, self.critic = self.load_models()
+            self.load_models(self.actor, self.critic)
             self.evaluate()
 
         else:  # TRAIN MODE
             print('Train mode. ')
-            # Non-linearity is an argument
-            self.non_linear = self.get_nonlinear()
-
-            # Actor and Critic networks
-            actor = self.get_actor()
-            critic = self.get_critic()
-            self.actor = actor.cuda() if self.use_gpu else actor
-            self.critic = critic.cuda() if self.use_gpu else critic
 
             self.learner = self.get_learner()
             self.sampler = self.get_sampler()
@@ -77,8 +78,8 @@ class BaseTrainer:
         save_path = str(root_dir / 'local' / 'models' / self.args.saveas)
         Path(str(root_dir / 'local' / 'models/')).mkdir(parents=True, exist_ok=True)
         print('Saving models to %s' % save_path)
-        torch.save(self.actor, save_path + '_actor.pt')
-        torch.save(self.critic, save_path + '_critic.pt')
+        torch.save(self.actor.state_dict(), save_path + '_actor.pt')
+        torch.save(self.critic.state_dict(), save_path + '_critic.pt')
         print('...done')
 
     def init_task_scheduler(self):
@@ -102,16 +103,19 @@ class BaseTrainer:
     def get_learner(self):
         raise NotImplementedError
 
-    def load_models(self):
+    def load_models(self, actor, critic):
         model_path = str(root_dir / 'local' / 'models' / self.args.model)
         print('Loading models from %s' % model_path)
-        actor = torch.load(model_path + '_actor.pt', map_location=torch.device('cpu'))
-        critic = torch.load(model_path + '_critic.pt', map_location=torch.device('cpu'))
+        actor_sd = torch.load(model_path + '_actor.pt', map_location=torch.device('cpu'))
+        actor.load_state_dict(actor_sd)
+        critic_sd = torch.load(model_path + '_critic.pt', map_location=torch.device('cpu'))
+        critic.load_state_dict(critic_sd)
         print('...done')
         return actor, critic
 
     def evaluate(self):
-        self.run(render=self.args.render)
+        while True:
+            self.run(render=self.args.render)
 
     def train(self):
         print('Start training. ')
@@ -193,31 +197,30 @@ class BaseTrainer:
         num_steps = 0
         reward = 0
         rewards = list()
-        while not done:
-            step_tic = time.clock()
-            if render:
-                self.env.render()
-            # Use the previous observation to get an action from policy
-            self.actor.eval()
-            obs = torch.tensor(obs, dtype=torch.float)
-            obs = obs.cuda() if self.use_gpu else obs
-            action, _ = self.actor.predict(obs, task=-1, noise=False)  # Last intention is main task
-            # Step the environment and push outputs to policy
-            gym_action = action.detach().cpu().squeeze()
-            if self.continuous and gym_action.dim() == 0:
-                gym_action = gym_action.unsqueeze(0)
-            obs, reward, done, _ = self.env.step(gym_action)
-            rewards.append(reward)
-            if self.writer:
-                self.writer.add_scalar('test/reward', reward, self.test_step)
-            step_toc = time.clock()
-            step_time = step_toc - step_tic
-            if render and min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
-                print("ACTION: {}".format(action.item()))
-                print("REWARD: {}".format(reward))
-                time.sleep(min_rate - step_time)
-            num_steps += 1
-            self.test_step += 1
+        with torch.no_grad():
+            while not done:
+                step_tic = time.clock()
+                if render:
+                    self.env.render()
+                # Use the previous observation to get an action from policy
+                self.actor.eval()
+                obs = torch.tensor(obs, dtype=torch.float)
+                obs = obs.cuda() if self.use_gpu else obs
+                action, _ = self.actor.predict(obs, task=-1, noise=False)  # Last intention is main task
+                # Step the environment and push outputs to policy
+                gym_action = action.detach().cpu().squeeze()
+                if self.continuous and gym_action.dim() == 0:
+                    gym_action = gym_action.unsqueeze(0)
+                obs, reward, done, _ = self.env.step(gym_action.numpy())
+                rewards.append(reward)
+                if self.writer:
+                    self.writer.add_scalar('test/reward', reward, self.test_step)
+                step_toc = time.clock()
+                step_time = step_toc - step_tic
+                if render and min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
+                    time.sleep(min_rate - step_time)
+                num_steps += 1
+                self.test_step += 1
         # Total elapsed time in epoch
         epoch_toc = time.clock()
         epoch_time = epoch_toc - epoch_tic

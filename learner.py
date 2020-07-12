@@ -24,6 +24,7 @@ class Learner:
                  episode_batch_size=32,
                  expectation_sample_size=8,
                  lr=0.0002,
+                 clip_grads=False,
                  use_gpu=False,
                  continuous=False,
                  writer=None):
@@ -34,6 +35,7 @@ class Learner:
         self.num_learning_iterations = num_learning_iterations
         self.episode_batch_size = episode_batch_size
         self.lr = lr
+        self.clip_grads = clip_grads
         self.writer = writer
         self.num_intentions = self.actor.num_intentions
         self.expectation_sample_size = expectation_sample_size
@@ -48,7 +50,7 @@ class Learner:
 
         # TODO: Specify alpha and gamma parameters.
         self.actor_criterion = ActorLoss()
-        self.critic_criterion = RetraceLossRecursive(use_gpu=use_gpu)
+        self.critic_criterion = RetraceLossRecursive()
 
         self.target_actor = copy.deepcopy(self.actor)
         self.target_critic = copy.deepcopy(self.critic)
@@ -125,7 +127,8 @@ class Learner:
                 task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
                 actor_loss.backward()
-                #nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
+                if self.clip_grads:
+                    nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
                 self.actor_opt.step()
 
                 # Train critic.
@@ -151,7 +154,8 @@ class Learner:
                                                     log_probs,
                                                     target_log_trajectory_task_action_probs.detach())
                 critic_loss.backward()
-                #nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
+                if self.clip_grads:
+                    nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
                 self.critic_opt.step()
 
                 # Write to log.
