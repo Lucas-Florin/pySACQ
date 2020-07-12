@@ -8,8 +8,6 @@ import torch
 import torch.nn as nn
 
 # Import losses
-from losses.retrace_loss_recursive import RetraceLossRecursive
-from losses.retrace_loss_recursive_fast import RetraceLossRecursiveFast
 from losses.retrace_loss import Retrace
 from losses.actor_loss import ActorLoss
 

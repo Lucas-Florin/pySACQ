@@ -39,7 +39,7 @@ class BaseTrainer:
         self.writer = None
         if self.args.log:
             # TODO: Optimize Tensorboard.
-            log_dir = root_dir / 'local' / 'logs' / self.args.log
+            log_dir = root_dir / 'logs' / self.args.log
             self.writer = SummaryWriter(log_dir=str(log_dir))
 
         self.test_step = 0
@@ -75,8 +75,8 @@ class BaseTrainer:
             self.writer.close()
 
     def save(self):
-        save_path = str(root_dir / 'local' / 'models' / self.args.saveas)
-        Path(str(root_dir / 'local' / 'models/')).mkdir(parents=True, exist_ok=True)
+        save_path = str(root_dir / 'models' / self.args.saveas)
+        Path(str(root_dir / 'models/')).mkdir(parents=True, exist_ok=True)
         print('Saving models to %s' % save_path)
         torch.save(self.actor.state_dict(), save_path + '_actor.pt')
         torch.save(self.critic.state_dict(), save_path + '_critic.pt')
@@ -104,7 +104,7 @@ class BaseTrainer:
         raise NotImplementedError
 
     def load_models(self, actor, critic):
-        model_path = str(root_dir / 'local' / 'models' / self.args.model)
+        model_path = str(root_dir / 'models' / self.args.model)
         print('Loading models from %s' % model_path)
         actor_sd = torch.load(model_path + '_actor.pt', map_location=torch.device('cpu'))
         actor.load_state_dict(actor_sd)
