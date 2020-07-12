@@ -50,18 +50,23 @@ class Learner:
 
         # TODO: Specify alpha and gamma parameters.
         self.actor_criterion = ActorLoss()
-        self.critic_criterion = RetraceLossRecursive()
+        self.critic_criterion = Retrace()
 
         self.target_actor = copy.deepcopy(self.actor)
         self.target_critic = copy.deepcopy(self.critic)
+        self.freeze_model(self.target_actor)
+        self.freeze_model(self.critic)
         self.target_actor.eval()
         self.target_critic.eval()
 
     def update_targets(self):
         self.target_actor.load_state_dict(self.actor.state_dict())
-        self.target_actor.eval()
         self.target_critic.load_state_dict(self.critic.state_dict())
-        self.target_critic.eval()
+
+    @staticmethod
+    def freeze_model(model):
+        for p in model.parameters():
+            p.requires_grad = False
 
     def get_critic_input(self, actions, states) -> torch.Tensor:
         if self.continuous:
@@ -121,11 +126,11 @@ class Learner:
                 # Train actor.
                 self.actor.train()
                 self.critic.eval()
-                self.actor_opt.zero_grad()
                 task_actions, task_log_probs = self.actor.predict(states, requires_grad=True)
 
                 task_state_action_values = self.critic(self.get_critic_input(task_actions, states))
                 actor_loss = self.actor_criterion(task_state_action_values, task_log_probs)
+                self.actor_opt.zero_grad()
                 actor_loss.backward()
                 if self.clip_grads:
                     nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=self.max_grad_norm)
@@ -133,26 +138,25 @@ class Learner:
 
                 # Train critic.
                 self.critic.train()
-                self.actor.eval()
-                self.critic_opt.zero_grad()
+
 
                 critic_input = self.get_critic_input(actions, states)
                 state_trajectory_action_values = self.critic(critic_input)
-                with torch.no_grad():
-                    target_state_trajectory_action_values = self.target_critic(critic_input)
-                    # TODO: Implement sampling for calculating expectation.
-                    target_task_actions, _ = self.target_actor.predict(states)
-                    target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
-                    _, target_log_trajectory_task_action_probs = self.target_actor.predict(
-                        states,
-                        action=self.expand_actions(actions)
-                    )
+                target_state_trajectory_action_values = self.target_critic(critic_input)
+                # TODO: Implement sampling for calculating expectation.
+                target_task_actions, _ = self.target_actor.predict(states)
+                target_expected_state_values = self.target_critic(self.get_critic_input(target_task_actions, states))
+                _, target_log_trajectory_task_action_probs = self.target_actor.predict(
+                    states,
+                    action=self.expand_actions(actions)
+                )
                 critic_loss = self.critic_criterion(state_trajectory_action_values,
-                                                    target_state_trajectory_action_values.detach(),
-                                                    target_expected_state_values.detach(),
+                                                    target_expected_state_values,
+                                                    target_state_trajectory_action_values,
                                                     rewards,
-                                                    log_probs,
-                                                    target_log_trajectory_task_action_probs.detach())
+                                                    target_log_trajectory_task_action_probs,
+                                                    log_probs)
+                self.critic_opt.zero_grad()
                 critic_loss.backward()
                 if self.clip_grads:
                     nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
