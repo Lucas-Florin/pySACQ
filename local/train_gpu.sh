@@ -1,6 +1,7 @@
 taskset -c 35-39 \
 python ../train_pendulum.py \
   --saveas=train \
+  --log=log \
   --save-freq 10 \
   --num_train_cycles=100 \
   --buffer_size=512 \

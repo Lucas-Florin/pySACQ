@@ -63,8 +63,6 @@ class Retrace(torch.nn.Module):
 
         T = Q.shape[1]  # total number of time steps in the trajectory
 
-        Q_t = Q[:, :-1]
-
         with torch.no_grad():
             # We don't want gradients from computing Q_ret, since:
             # ∇φ (Q - Q_ret)^2 ∝ (Q - Q_ret) * ∇φ Q
@@ -83,5 +81,5 @@ class Retrace(torch.nn.Module):
                         )
                 )
 
-        return F.mse_loss(Q_t, Q_ret[:, :-1, :])
+        return F.mse_loss(Q[:, :-1, :], Q_ret[:, :-1, :])
 

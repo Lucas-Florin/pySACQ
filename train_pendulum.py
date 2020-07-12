@@ -31,10 +31,11 @@ class PendulumTrainer(BaseTrainer):
     def get_sampler(self):
         return Sampler(self.actor, self.env, self.task, self.replay_buffer,
                        num_trajectories=self.args.num_trajectories,
-                       task_period=30,
+                       task_period=100,
                        use_gpu=self.use_gpu,
                        continuous=True,
                        reward_scaling_factor=1.0,
+                       skip_steps=4,
                        writer=self.writer
                        )
 
