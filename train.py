@@ -220,8 +220,7 @@ class BaseTrainer:
                     gym_action = gym_action.unsqueeze(0)
                 obs, reward, done, _ = self.env.step(gym_action.numpy())
                 rewards.append(reward)
-                if self.writer:
-                    self.writer.add_scalar('test/reward', reward, self.test_step)
+
                 step_toc = time.clock()
                 step_time = step_toc - step_tic
                 if render and min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
@@ -232,6 +231,8 @@ class BaseTrainer:
         epoch_toc = time.clock()
         epoch_time = epoch_toc - epoch_tic
         print('Evaluation mean reward %s ' % (np.mean(rewards)))
+        if self.writer:
+            self.writer.add_scalar('test/reward', np.mean(rewards), self.test_step)
 
 
 if __name__ == '__main__':

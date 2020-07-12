@@ -35,7 +35,7 @@ class PendulumTrainer(BaseTrainer):
                        use_gpu=self.use_gpu,
                        continuous=True,
                        reward_scaling_factor=1.0,
-                       skip_steps=4,
+                       skip_steps=1,
                        writer=self.writer
                        )
 

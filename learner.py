@@ -9,6 +9,7 @@ import torch.nn as nn
 
 # Import losses
 from losses.retrace_loss import Retrace
+from losses.retrace_loss_fast import RetraceFast
 from losses.actor_loss import ActorLoss
 
 
