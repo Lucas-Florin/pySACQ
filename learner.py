@@ -55,7 +55,7 @@ class Learner:
         self.target_actor = copy.deepcopy(self.actor)
         self.target_critic = copy.deepcopy(self.critic)
         self.freeze_model(self.target_actor)
-        self.freeze_model(self.critic)
+        self.freeze_model(self.target_critic)
         self.target_actor.eval()
         self.target_critic.eval()
 

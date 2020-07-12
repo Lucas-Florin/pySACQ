@@ -182,7 +182,7 @@ class BaseTrainer:
 
         return parser
 
-    def run(self, min_rate=0.05, render=False):
+    def run(self, min_rate=0.02, render=False):
         """
         Runs the actor policy on the environment, rendering it. This does not store anything
         and is only used for visualization.
