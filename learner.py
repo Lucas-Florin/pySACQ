@@ -114,7 +114,6 @@ class Learner:
         return tuple([t.cuda() if self.use_gpu else t for t in tensors])
 
     def learn(self):
-        print("Training networks...")
         for learn_idx in range(self.num_learning_iterations):
             for _ in range(10):
                 # print('Learning: trajectory %s of %s' % (learn_idx + 1, num_learning_iterations))

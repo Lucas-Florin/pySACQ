@@ -120,13 +120,20 @@ class BaseTrainer:
     def train(self):
         print('Start training. ')
         for i in range(self.args.num_train_cycles):
+            t = time.time()
             print('Training cycle %s of %s' % (i, self.args.num_train_cycles))
             self.sampler.sample()
+            print("Sampling: {:.2f}s".format(time.time() - t))
+            t = time.time()
             self.learner.learn()
+            print("Learning: {:.2f}s".format(time.time() - t))
+            t = time.time()
             for _ in range(5):
                 self.run()
             if (i+1) % self.args.save_freq == 0:
                 self.save()
+            print("Evaluation: {:.2f}s".format(time.time() - t))
+            t = time.time()
 
     def check_gpu(self):
         # Make sure we can use gpu
