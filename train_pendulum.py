@@ -45,6 +45,7 @@ class PendulumTrainer(BaseTrainer):
                        episode_batch_size=self.args.episode_batch_size,
                        use_gpu=self.use_gpu,
                        continuous=True,
+                       clip_grads=True,
                        writer=self.writer)
 
     @staticmethod
