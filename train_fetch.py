@@ -76,6 +76,7 @@ class FetchTrainer(BaseTrainer):
                        use_gpu=self.use_gpu,
                        continuous=True,
                        clip_grads=True,
+                       entropy_reg=10.,
                        writer=self.writer)
 
     @staticmethod

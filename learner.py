@@ -23,6 +23,7 @@ class Learner:
                  episode_batch_size=32,
                  expectation_sample_size=8,
                  lr=0.0002,
+                 entropy_reg=0.0,
                  clip_grads=False,
                  use_gpu=False,
                  continuous=False,
@@ -48,7 +49,7 @@ class Learner:
         self.critic_opt = torch.optim.Adam(critic.parameters(), lr)
 
         # TODO: Specify alpha and gamma parameters.
-        self.actor_criterion = ActorLoss()
+        self.actor_criterion = ActorLoss(alpha=entropy_reg)
         self.critic_criterion = Retrace()
 
         self.target_actor = copy.deepcopy(self.actor)

@@ -1,10 +1,7 @@
 import torch
 
 
-class NoneTransform(torch.nn.Module):
 
-    def forward(self, obs):
-        return obs
 
 
 class FetchTransform(torch.nn.Module):
