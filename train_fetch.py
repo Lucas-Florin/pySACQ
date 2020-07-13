@@ -12,6 +12,13 @@ from transforms import FetchTransform
 
 class FetchTrainer(BaseTrainer):
 
+    def __init__(self):
+        self.num_actions = 4
+        self.num_observations = 13
+
+        super().__init__()
+
+
     def init_task_scheduler(self):
         return NoneScheduler()
 
@@ -25,17 +32,21 @@ class FetchTrainer(BaseTrainer):
 
     def get_actor(self):
         return ContinuousActor(
-            state_dim=13,
+            state_dim=self.num_observations,
             base_hidden_size=32,
             head_input_size=16,
             head_hidden_size=8,
             action_dim=4,
+            action_min=-0.5,
+            action_max=0.5,
+            sd_min=0.05,
+            sd_max=0.5,
             use_gpu=self.use_gpu
         )
 
     def get_critic(self):
         return ContinuousCritic(
-            state_dim=17,
+            state_dim=self.num_observations + self.num_actions,
             base_hidden_size=64,
             head_input_size=64,
             head_hidden_size=32,
@@ -64,6 +75,7 @@ class FetchTrainer(BaseTrainer):
                        episode_batch_size=self.args.episode_batch_size,
                        use_gpu=self.use_gpu,
                        continuous=True,
+                       clip_grads=True,
                        writer=self.writer)
 
     @staticmethod

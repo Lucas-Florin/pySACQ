@@ -13,8 +13,11 @@ class ContinuousActor(SQXNet):
                  num_intentions=1,
                  head_input_size=16,
                  head_hidden_size=8,
-                 head_output_size=4,
                  action_dim=1,
+                 action_min=-2.0,
+                 action_max=2.0,
+                 sd_min=0.1,
+                 sd_max=1.0,
                  non_linear=torch.nn.ELU(),
                  net_type=TaskHeadActor,
                  layer_norm=True,
@@ -31,15 +34,19 @@ class ContinuousActor(SQXNet):
                                               use_gpu=use_gpu)
         self.logits = nn.Tanh()
         self.action_dim = action_dim
+        self.action_min = action_min
+        self.action_max = action_max
+        self.sd_min = sd_min
+        self.sd_max = sd_max
 
     def predict(self, x, task=None, action=None, sampling_batch=None, requires_grad=False, noise=True):
         x = self(x, task)
         x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
         # Intention head determines parameters of Categorical distribution
-        means = x.narrow(-1, 0, self.action_dim) * 2
+        means = (x.narrow(-1, 0, self.action_dim) + 1) / 2 * (self.action_max - self.action_min) + self.action_min
         # TODO: Scale standard deviation
-        standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) / 2 + 0.5) * 0.9 + 0.1
+        standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) + 1) * 2 * (self.sd_max - self.sd_min) + self.sd_min
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
         if action is None:
