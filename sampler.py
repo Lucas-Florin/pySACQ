@@ -51,6 +51,7 @@ class Sampler:
             obs = self.env.reset()
             done = False
             num_steps = 0
+            eval_rewards = list()
             # Roll out
             while not done:
                 if self.transform is not None:
@@ -67,6 +68,7 @@ class Sampler:
                 if self.continuous and gym_action.dim() == 0:
                     gym_action = gym_action.unsqueeze(0)
                 gym_reward = list()
+
                 for _ in range(self.skip_steps):
                     obs_new, r, done, _ = self.env.step(gym_action.numpy())
                     gym_reward.append(r)
@@ -74,9 +76,8 @@ class Sampler:
                 # Reward is a vector of the reward for each task
 
                 reward = self.task_scheduler.reward(obs, np.mean(gym_reward) * self.reward_scaling_factor)
-                if self.writer:
-                    for i, r in enumerate(reward):
-                        self.writer.add_scalar('train/reward/%s' % i, r, self.step_counter)
+                eval_rewards.append(np.mean(gym_reward))
+
                 # group information into a step and add to current trajectory
                 observations.append(obs.detach())
                 actions.append(action.detach())
@@ -85,6 +86,8 @@ class Sampler:
                 num_steps += 1
                 self.step_counter += 1
                 obs = obs_new
+            if self.writer:
+                self.writer.add_scalar('train/reward', np.mean(eval_rewards), self.step_counter)
             # Add trajectory to replay buffer
             observations = torch.cat(observations).float()
             actions = torch.cat(actions).float()
