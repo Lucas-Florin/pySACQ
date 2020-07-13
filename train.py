@@ -232,7 +232,7 @@ class BaseTrainer:
                 if render and min_rate and step_time < min_rate:  # Sleep to ensure minimum rate
                     time.sleep(min_rate - step_time)
                 num_steps += 1
-                self.test_step += 1
+        self.test_step += 1
         # Total elapsed time in epoch
         epoch_toc = time.clock()
         epoch_time = epoch_toc - epoch_tic

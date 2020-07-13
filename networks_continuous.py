@@ -14,6 +14,7 @@ class ContinuousActor(SQXNet):
                  head_input_size=16,
                  head_hidden_size=8,
                  action_dim=1,
+                 normalization='linear',
                  action_min=-2.0,
                  action_max=2.0,
                  sd_min=0.1,
@@ -39,14 +40,27 @@ class ContinuousActor(SQXNet):
         self.sd_min = sd_min
         self.sd_max = sd_max
 
+        self.normalize = self.normalize_linear if normalization == 'linear' else self.normalize_tanh
+
+    def normalize_tanh(self, mean, sd):
+        mean = (self.logits(mean) + 1) / 2 * (self.action_max - self.action_min) + self.action_min
+        sd = (self.logits(sd) + 1) * 2 * (self.sd_max - self.sd_min) + self.sd_min
+        return mean, sd
+
+
+    def normalize_linear(self, mean, sd):
+        mean = torch.clamp(mean, min=self.action_min, max=self.action_max)
+        sd = torch.clamp(sd, min=self.sd_min, max=self.sd_max)
+        return mean, sd
+
     def predict(self, x, task=None, action=None, sampling_batch=None, requires_grad=False, noise=True):
         x = self(x, task)
-        x = self.logits(x)
         assert x.shape[-1] == self.action_dim * 2
         # Intention head determines parameters of Categorical distribution
-        means = (x.narrow(-1, 0, self.action_dim) + 1) / 2 * (self.action_max - self.action_min) + self.action_min
+        means = x.narrow(-1, 0, self.action_dim)
         # TODO: Scale standard deviation
-        standard_deviations = (x.narrow(-1, self.action_dim, self.action_dim) + 1) * 2 * (self.sd_max - self.sd_min) + self.sd_min
+        standard_deviations = x.narrow(-1, self.action_dim, self.action_dim)
+        means, standard_deviations = self.normalize(means, standard_deviations)
         dist = torch.distributions.Normal(means, standard_deviations)
         aux_dist = torch.distributions.Normal(torch.zeros_like(means), torch.ones_like(standard_deviations))
         if action is None:
