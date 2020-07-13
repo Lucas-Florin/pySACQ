@@ -24,6 +24,7 @@ class Sampler:
                  continuous=False,
                  reward_scaling_factor=1.0,
                  skip_steps=1,
+                 transform=None,
                  writer=None):
 
         self.actor = actor
@@ -38,6 +39,7 @@ class Sampler:
         self.continuous = continuous
         self.reward_scaling_factor = reward_scaling_factor
         self.skip_steps = skip_steps
+        self.transform = transform
 
     def sample(self):
         for trajectory_idx in range(self.num_trajectories):
@@ -51,6 +53,8 @@ class Sampler:
             num_steps = 0
             # Roll out
             while not done:
+                if self.transform is not None:
+                    obs = self.transform(obs)
                 # Sample a new task using the scheduler
                 if num_steps % self.task_period == 0:
                     self.task_scheduler.sample()
@@ -59,15 +63,16 @@ class Sampler:
                 obs = obs.cuda() if self.use_gpu else obs
                 action, log_prob = self.actor.predict(obs, task=self.task_scheduler.current_task)
                 # Execute action and collect rewards for each task
-                gym_action = action.cpu().squeeze()
+                gym_action = action.detach().cpu().squeeze()
                 if self.continuous and gym_action.dim() == 0:
                     gym_action = gym_action.unsqueeze(0)
                 gym_reward = list()
                 for _ in range(self.skip_steps):
-                    obs_new, r, done, _ = self.env.step(gym_action)
+                    obs_new, r, done, _ = self.env.step(gym_action.numpy())
                     gym_reward.append(r)
                 # Modify the main task reward (the huge -100 and 100 values cause instability)
                 # Reward is a vector of the reward for each task
+
                 reward = self.task_scheduler.reward(obs, np.mean(gym_reward) * self.reward_scaling_factor)
                 if self.writer:
                     for i, r in enumerate(reward):

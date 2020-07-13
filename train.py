@@ -31,6 +31,7 @@ class BaseTrainer:
         self.continuous = False
         self.reward_scaling_factor = 1.0
         self.env = self.init_env()
+        self.transform = self.get_transform()
 
         # task scheduler is defined in tasks.py
         self.task = self.init_task_scheduler()
@@ -102,6 +103,9 @@ class BaseTrainer:
 
     def get_learner(self):
         raise NotImplementedError
+
+    def get_transform(self):
+        return None
 
     def load_models(self, actor, critic):
         model_path = str(root_dir / 'models' / self.args.model)
@@ -206,6 +210,8 @@ class BaseTrainer:
         rewards = list()
         with torch.no_grad():
             while not done:
+                if self.transform is not None:
+                    obs = self.transform(obs)
                 step_tic = time.clock()
                 if render:
                     self.env.render()
